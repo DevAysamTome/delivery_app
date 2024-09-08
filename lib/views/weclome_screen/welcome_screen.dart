@@ -27,7 +27,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   ];
 
   int _current = 0;
-  final CarouselController _controller = CarouselController();
+  final CarouselSliderController _controller = CarouselSliderController();
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +88,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.red,
-                                padding: const EdgeInsets.fromLTRB(30, 15, 30, 15)),
+                                padding:
+                                    const EdgeInsets.fromLTRB(30, 15, 30, 15)),
                             onPressed: () {
                               Navigator.push(
                                 context,
