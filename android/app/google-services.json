@@ -1,0 +1,105 @@
+{
+  "project_info": {
+    "project_number": "572219831254",
+    "project_id": "sarie-46b77",
+    "storage_bucket": "sarie-46b77.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:572219831254:android:d4ad1399f76bc6ff45ea77",
+        "android_client_info": {
+          "package_name": "com.example.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqcHoZA2x3CFq-TXi-H13X34iFJsLWx1I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:572219831254:android:f495b55af7a1509945ea77",
+        "android_client_info": {
+          "package_name": "sarie.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqcHoZA2x3CFq-TXi-H13X34iFJsLWx1I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:572219831254:android:98565b88cbdd80a845ea77",
+        "android_client_info": {
+          "package_name": "sarie.app.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqcHoZA2x3CFq-TXi-H13X34iFJsLWx1I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:572219831254:android:30ee7494ca0af67a45ea77",
+        "android_client_info": {
+          "package_name": "sarie.app.delivery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqcHoZA2x3CFq-TXi-H13X34iFJsLWx1I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:572219831254:android:27bff19fae26e04245ea77",
+        "android_client_info": {
+          "package_name": "sarie.app.manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqcHoZA2x3CFq-TXi-H13X34iFJsLWx1I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

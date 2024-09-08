@@ -1,0 +1,691 @@
+diff --git a/ios/Flutter/Debug.xcconfig b/ios/Flutter/Debug.xcconfig
+index 0b2d479..dfd2626 100644
+--- a/ios/Flutter/Debug.xcconfig
++++ b/ios/Flutter/Debug.xcconfig
+@@ -1 +1,2 @@
++#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+ #include "Generated.xcconfig"
+diff --git a/ios/Flutter/Release.xcconfig b/ios/Flutter/Release.xcconfig
+index 0b2d479..a97381a 100644
+--- a/ios/Flutter/Release.xcconfig
++++ b/ios/Flutter/Release.xcconfig
+@@ -1 +1,2 @@
++#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+ #include "Generated.xcconfig"
+diff --git a/ios/Podfile b/ios/Podfile
+new file mode 100644
+index 0000000..d97f17e
+--- /dev/null
++++ b/ios/Podfile
+@@ -0,0 +1,44 @@
++# Uncomment this line to define a global platform for your project
++# platform :ios, '12.0'
++
++# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
++ENV['COCOAPODS_DISABLE_STATS'] = 'true'
++
++project 'Runner', {
++  'Debug' => :debug,
++  'Profile' => :release,
++  'Release' => :release,
++}
++
++def flutter_root
++  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
++  unless File.exist?(generated_xcode_build_settings_path)
++    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
++  end
++
++  File.foreach(generated_xcode_build_settings_path) do |line|
++    matches = line.match(/FLUTTER_ROOT\=(.*)/)
++    return matches[1].strip if matches
++  end
++  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
++end
++
++require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
++
++flutter_ios_podfile_setup
++
++target 'Runner' do
++  use_frameworks!
++  use_modular_headers!
++
++  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
++  target 'RunnerTests' do
++    inherit! :search_paths
++  end
++end
++
++post_install do |installer|
++  installer.pods_project.targets.each do |target|
++    flutter_additional_ios_build_settings(target)
++  end
++end
+diff --git a/ios/Runner.xcodeproj/project.pbxproj b/ios/Runner.xcodeproj/project.pbxproj
+index ae62fdd..a3061f4 100644
+--- a/ios/Runner.xcodeproj/project.pbxproj
++++ b/ios/Runner.xcodeproj/project.pbxproj
+@@ -3,13 +3,14 @@
+ 	archiveVersion = 1;
+ 	classes = {
+ 	};
+-	objectVersion = 54;
++	objectVersion = 60;
+ 	objects = {
+ 
+ /* Begin PBXBuildFile section */
+ 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+ 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
+ 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
++		687284F02C8DA9DD0075ECF0 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 687284EF2C8DA9DD0075ECF0 /* GoogleService-Info.plist */; };
+ 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
+ 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
+ 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
+@@ -45,6 +46,7 @@
+ 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
+ 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+ 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
++		687284EF2C8DA9DD0075ECF0 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Runner/GoogleService-Info.plist"; sourceTree = "<group>"; };
+ 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
+ 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+ 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+@@ -90,6 +92,7 @@
+ 		97C146E51CF9000F007C117D = {
+ 			isa = PBXGroup;
+ 			children = (
++				687284EF2C8DA9DD0075ECF0 /* GoogleService-Info.plist */,
+ 				9740EEB11CF90186004384FC /* Flutter */,
+ 				97C146F01CF9000F007C117D /* Runner */,
+ 				97C146EF1CF9000F007C117D /* Products */,
+@@ -182,7 +185,7 @@
+ 				};
+ 			};
+ 			buildConfigurationList = 97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */;
+-			compatibilityVersion = "Xcode 9.3";
++			compatibilityVersion = "Xcode 15.0";
+ 			developmentRegion = en;
+ 			hasScannedForEncodings = 0;
+ 			knownRegions = (
+@@ -214,6 +217,7 @@
+ 			files = (
+ 				97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */,
+ 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
++				687284F02C8DA9DD0075ECF0 /* GoogleService-Info.plist in Resources */,
+ 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
+ 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+ 			);
+@@ -364,11 +368,12 @@
+ 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+ 				ENABLE_BITCODE = NO;
+ 				INFOPLIST_FILE = Runner/Info.plist;
++				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+ 				LD_RUNPATH_SEARCH_PATHS = (
+ 					"$(inherited)",
+ 					"@executable_path/Frameworks",
+ 				);
+-				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveryApp;
++				PRODUCT_BUNDLE_IDENTIFIER = sarie.deliveryApp;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
+ 				SWIFT_VERSION = 5.0;
+@@ -543,11 +548,12 @@
+ 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+ 				ENABLE_BITCODE = NO;
+ 				INFOPLIST_FILE = Runner/Info.plist;
++				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+ 				LD_RUNPATH_SEARCH_PATHS = (
+ 					"$(inherited)",
+ 					"@executable_path/Frameworks",
+ 				);
+-				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveryApp;
++				PRODUCT_BUNDLE_IDENTIFIER = sarie.deliveryApp;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
+ 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+@@ -565,11 +571,12 @@
+ 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+ 				ENABLE_BITCODE = NO;
+ 				INFOPLIST_FILE = Runner/Info.plist;
++				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+ 				LD_RUNPATH_SEARCH_PATHS = (
+ 					"$(inherited)",
+ 					"@executable_path/Frameworks",
+ 				);
+-				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveryApp;
++				PRODUCT_BUNDLE_IDENTIFIER = sarie.deliveryApp;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
+ 				SWIFT_VERSION = 5.0;
+diff --git a/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json b/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+index ffab254..6bf81eb 100644
+--- a/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
++++ b/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+@@ -1 +1,354 @@
+-{"images":[{"size":"60x60","expected-size":"180","filename":"180.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"3x"},{"size":"40x40","expected-size":"80","filename":"80.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"2x"},{"size":"40x40","expected-size":"120","filename":"120.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"3x"},{"size":"60x60","expected-size":"120","filename":"120.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"2x"},{"size":"57x57","expected-size":"57","filename":"57.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"1x"},{"size":"29x29","expected-size":"58","filename":"58.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"2x"},{"size":"29x29","expected-size":"29","filename":"29.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"1x"},{"size":"29x29","expected-size":"87","filename":"87.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"3x"},{"size":"57x57","expected-size":"114","filename":"114.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"2x"},{"size":"20x20","expected-size":"40","filename":"40.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"2x"},{"size":"20x20","expected-size":"60","filename":"60.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"iphone","scale":"3x"},{"size":"1024x1024","filename":"1024.png","expected-size":"1024","idiom":"ios-marketing","folder":"Assets.xcassets/AppIcon.appiconset/","scale":"1x"},{"size":"40x40","expected-size":"80","filename":"80.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"2x"},{"size":"72x72","expected-size":"72","filename":"72.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"1x"},{"size":"76x76","expected-size":"152","filename":"152.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"2x"},{"size":"50x50","expected-size":"100","filename":"100.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"2x"},{"size":"29x29","expected-size":"58","filename":"58.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"2x"},{"size":"76x76","expected-size":"76","filename":"76.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"1x"},{"size":"29x29","expected-size":"29","filename":"29.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"1x"},{"size":"50x50","expected-size":"50","filename":"50.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"1x"},{"size":"72x72","expected-size":"144","filename":"144.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"2x"},{"size":"40x40","expected-size":"40","filename":"40.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"1x"},{"size":"83.5x83.5","expected-size":"167","filename":"167.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"2x"},{"size":"20x20","expected-size":"20","filename":"20.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"1x"},{"size":"20x20","expected-size":"40","filename":"40.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"ipad","scale":"2x"},{"idiom":"watch","filename":"172.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"38mm","scale":"2x","size":"86x86","expected-size":"172","role":"quickLook"},{"idiom":"watch","filename":"80.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"38mm","scale":"2x","size":"40x40","expected-size":"80","role":"appLauncher"},{"idiom":"watch","filename":"88.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"40mm","scale":"2x","size":"44x44","expected-size":"88","role":"appLauncher"},{"idiom":"watch","filename":"102.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"41mm","scale":"2x","size":"45x45","expected-size":"102","role":"appLauncher"},{"idiom":"watch","filename":"92.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"41mm","scale":"2x","size":"46x46","expected-size":"92","role":"appLauncher"},{"idiom":"watch","filename":"100.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"44mm","scale":"2x","size":"50x50","expected-size":"100","role":"appLauncher"},{"idiom":"watch","filename":"196.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"42mm","scale":"2x","size":"98x98","expected-size":"196","role":"quickLook"},{"idiom":"watch","filename":"216.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"44mm","scale":"2x","size":"108x108","expected-size":"216","role":"quickLook"},{"idiom":"watch","filename":"48.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"38mm","scale":"2x","size":"24x24","expected-size":"48","role":"notificationCenter"},{"idiom":"watch","filename":"55.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"42mm","scale":"2x","size":"27.5x27.5","expected-size":"55","role":"notificationCenter"},{"idiom":"watch","filename":"66.png","folder":"Assets.xcassets/AppIcon.appiconset/","subtype":"45mm","scale":"2x","size":"33x33","expected-size":"66","role":"notificationCenter"},{"size":"29x29","expected-size":"87","filename":"87.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"watch","role":"companionSettings","scale":"3x"},{"size":"29x29","expected-size":"58","filename":"58.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"watch","role":"companionSettings","scale":"2x"},{"size":"1024x1024","expected-size":"1024","filename":"1024.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"watch-marketing","scale":"1x"},{"size":"128x128","expected-size":"128","filename":"128.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"mac","scale":"1x"},{"size":"256x256","expected-size":"256","filename":"256.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"mac","scale":"1x"},{"size":"128x128","expected-size":"256","filename":"256.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"mac","scale":"2x"},{"size":"256x256","expected-size":"512","filename":"512.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"mac","scale":"2x"},{"size":"32x32","expected-size":"32","filename":"32.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"mac","scale":"1x"},{"size":"512x512","expected-size":"512","filename":"512.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"mac","scale":"1x"},{"size":"16x16","expected-size":"16","filename":"16.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"mac","scale":"1x"},{"size":"16x16","expected-size":"32","filename":"32.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"mac","scale":"2x"},{"size":"32x32","expected-size":"64","filename":"64.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"mac","scale":"2x"},{"size":"512x512","expected-size":"1024","filename":"1024.png","folder":"Assets.xcassets/AppIcon.appiconset/","idiom":"mac","scale":"2x"}]}
+\ No newline at end of file
++{
++  "images" : [
++    {
++      "filename" : "40.png",
++      "idiom" : "iphone",
++      "scale" : "2x",
++      "size" : "20x20"
++    },
++    {
++      "filename" : "60.png",
++      "idiom" : "iphone",
++      "scale" : "3x",
++      "size" : "20x20"
++    },
++    {
++      "filename" : "29.png",
++      "idiom" : "iphone",
++      "scale" : "1x",
++      "size" : "29x29"
++    },
++    {
++      "filename" : "58.png",
++      "idiom" : "iphone",
++      "scale" : "2x",
++      "size" : "29x29"
++    },
++    {
++      "filename" : "87.png",
++      "idiom" : "iphone",
++      "scale" : "3x",
++      "size" : "29x29"
++    },
++    {
++      "filename" : "80.png",
++      "idiom" : "iphone",
++      "scale" : "2x",
++      "size" : "40x40"
++    },
++    {
++      "filename" : "120.png",
++      "idiom" : "iphone",
++      "scale" : "3x",
++      "size" : "40x40"
++    },
++    {
++      "filename" : "57.png",
++      "idiom" : "iphone",
++      "scale" : "1x",
++      "size" : "57x57"
++    },
++    {
++      "filename" : "114.png",
++      "idiom" : "iphone",
++      "scale" : "2x",
++      "size" : "57x57"
++    },
++    {
++      "filename" : "120.png",
++      "idiom" : "iphone",
++      "scale" : "2x",
++      "size" : "60x60"
++    },
++    {
++      "filename" : "180.png",
++      "idiom" : "iphone",
++      "scale" : "3x",
++      "size" : "60x60"
++    },
++    {
++      "filename" : "20.png",
++      "idiom" : "ipad",
++      "scale" : "1x",
++      "size" : "20x20"
++    },
++    {
++      "filename" : "40.png",
++      "idiom" : "ipad",
++      "scale" : "2x",
++      "size" : "20x20"
++    },
++    {
++      "filename" : "29.png",
++      "idiom" : "ipad",
++      "scale" : "1x",
++      "size" : "29x29"
++    },
++    {
++      "filename" : "58.png",
++      "idiom" : "ipad",
++      "scale" : "2x",
++      "size" : "29x29"
++    },
++    {
++      "filename" : "40.png",
++      "idiom" : "ipad",
++      "scale" : "1x",
++      "size" : "40x40"
++    },
++    {
++      "filename" : "80.png",
++      "idiom" : "ipad",
++      "scale" : "2x",
++      "size" : "40x40"
++    },
++    {
++      "filename" : "50.png",
++      "idiom" : "ipad",
++      "scale" : "1x",
++      "size" : "50x50"
++    },
++    {
++      "filename" : "100.png",
++      "idiom" : "ipad",
++      "scale" : "2x",
++      "size" : "50x50"
++    },
++    {
++      "filename" : "72.png",
++      "idiom" : "ipad",
++      "scale" : "1x",
++      "size" : "72x72"
++    },
++    {
++      "filename" : "144.png",
++      "idiom" : "ipad",
++      "scale" : "2x",
++      "size" : "72x72"
++    },
++    {
++      "filename" : "76.png",
++      "idiom" : "ipad",
++      "scale" : "1x",
++      "size" : "76x76"
++    },
++    {
++      "filename" : "152.png",
++      "idiom" : "ipad",
++      "scale" : "2x",
++      "size" : "76x76"
++    },
++    {
++      "filename" : "167.png",
++      "idiom" : "ipad",
++      "scale" : "2x",
++      "size" : "83.5x83.5"
++    },
++    {
++      "filename" : "1024.png",
++      "idiom" : "ios-marketing",
++      "scale" : "1x",
++      "size" : "1024x1024"
++    },
++    {
++      "filename" : "16.png",
++      "idiom" : "mac",
++      "scale" : "1x",
++      "size" : "16x16"
++    },
++    {
++      "filename" : "32.png",
++      "idiom" : "mac",
++      "scale" : "2x",
++      "size" : "16x16"
++    },
++    {
++      "filename" : "32.png",
++      "idiom" : "mac",
++      "scale" : "1x",
++      "size" : "32x32"
++    },
++    {
++      "filename" : "64.png",
++      "idiom" : "mac",
++      "scale" : "2x",
++      "size" : "32x32"
++    },
++    {
++      "filename" : "128.png",
++      "idiom" : "mac",
++      "scale" : "1x",
++      "size" : "128x128"
++    },
++    {
++      "filename" : "256.png",
++      "idiom" : "mac",
++      "scale" : "2x",
++      "size" : "128x128"
++    },
++    {
++      "filename" : "256.png",
++      "idiom" : "mac",
++      "scale" : "1x",
++      "size" : "256x256"
++    },
++    {
++      "filename" : "512.png",
++      "idiom" : "mac",
++      "scale" : "2x",
++      "size" : "256x256"
++    },
++    {
++      "filename" : "512.png",
++      "idiom" : "mac",
++      "scale" : "1x",
++      "size" : "512x512"
++    },
++    {
++      "filename" : "1024.png",
++      "idiom" : "mac",
++      "scale" : "2x",
++      "size" : "512x512"
++    },
++    {
++      "filename" : "48.png",
++      "idiom" : "watch",
++      "role" : "notificationCenter",
++      "scale" : "2x",
++      "size" : "24x24",
++      "subtype" : "38mm"
++    },
++    {
++      "filename" : "55.png",
++      "idiom" : "watch",
++      "role" : "notificationCenter",
++      "scale" : "2x",
++      "size" : "27.5x27.5",
++      "subtype" : "42mm"
++    },
++    {
++      "filename" : "58.png",
++      "idiom" : "watch",
++      "role" : "companionSettings",
++      "scale" : "2x",
++      "size" : "29x29"
++    },
++    {
++      "filename" : "87.png",
++      "idiom" : "watch",
++      "role" : "companionSettings",
++      "scale" : "3x",
++      "size" : "29x29"
++    },
++    {
++      "filename" : "66.png",
++      "idiom" : "watch",
++      "role" : "notificationCenter",
++      "scale" : "2x",
++      "size" : "33x33",
++      "subtype" : "45mm"
++    },
++    {
++      "filename" : "80.png",
++      "idiom" : "watch",
++      "role" : "appLauncher",
++      "scale" : "2x",
++      "size" : "40x40",
++      "subtype" : "38mm"
++    },
++    {
++      "filename" : "88.png",
++      "idiom" : "watch",
++      "role" : "appLauncher",
++      "scale" : "2x",
++      "size" : "44x44",
++      "subtype" : "40mm"
++    },
++    {
++      "filename" : "92.png",
++      "idiom" : "watch",
++      "role" : "appLauncher",
++      "scale" : "2x",
++      "size" : "46x46",
++      "subtype" : "41mm"
++    },
++    {
++      "filename" : "100.png",
++      "idiom" : "watch",
++      "role" : "appLauncher",
++      "scale" : "2x",
++      "size" : "50x50",
++      "subtype" : "44mm"
++    },
++    {
++      "idiom" : "watch",
++      "role" : "appLauncher",
++      "scale" : "2x",
++      "size" : "51x51",
++      "subtype" : "45mm"
++    },
++    {
++      "idiom" : "watch",
++      "role" : "appLauncher",
++      "scale" : "2x",
++      "size" : "54x54",
++      "subtype" : "49mm"
++    },
++    {
++      "filename" : "172.png",
++      "idiom" : "watch",
++      "role" : "quickLook",
++      "scale" : "2x",
++      "size" : "86x86",
++      "subtype" : "38mm"
++    },
++    {
++      "filename" : "196.png",
++      "idiom" : "watch",
++      "role" : "quickLook",
++      "scale" : "2x",
++      "size" : "98x98",
++      "subtype" : "42mm"
++    },
++    {
++      "filename" : "216.png",
++      "idiom" : "watch",
++      "role" : "quickLook",
++      "scale" : "2x",
++      "size" : "108x108",
++      "subtype" : "44mm"
++    },
++    {
++      "idiom" : "watch",
++      "role" : "quickLook",
++      "scale" : "2x",
++      "size" : "117x117",
++      "subtype" : "45mm"
++    },
++    {
++      "idiom" : "watch",
++      "role" : "quickLook",
++      "scale" : "2x",
++      "size" : "129x129",
++      "subtype" : "49mm"
++    },
++    {
++      "filename" : "1024.png",
++      "idiom" : "watch-marketing",
++      "scale" : "1x",
++      "size" : "1024x1024"
++    },
++    {
++      "filename" : "102.png",
++      "idiom" : "watch",
++      "role" : "appLauncher",
++      "scale" : "2x",
++      "size" : "45x45",
++      "subtype" : "41mm"
++    }
++  ],
++  "info" : {
++    "author" : "xcode",
++    "version" : 1
++  }
++}
+diff --git a/ios/Runner/Info.plist b/ios/Runner/Info.plist
+index 7078923..8adfba3 100644
+--- a/ios/Runner/Info.plist
++++ b/ios/Runner/Info.plist
+@@ -1,52 +1,51 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+-<plist version="1.0">
+-<dict>
+-	<key>CFBundleDevelopmentRegion</key>
+-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+-	<key>CFBundleDisplayName</key>
+-	<string>Sarie - Delivery</string>
+-	<key>CFBundleExecutable</key>
+-	<string>$(EXECUTABLE_NAME)</string>
+-	<key>CFBundleIdentifier</key>
+-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+-	<key>CFBundleInfoDictionaryVersion</key>
+-	<string>6.0</string>
+-	<key>CFBundleName</key>
+-	<string>delivery_app</string>
+-	<key>CFBundlePackageType</key>
+-	<string>APPL</string>
+-	<key>CFBundleShortVersionString</key>
+-	<string>$(FLUTTER_BUILD_NAME)</string>
+-	<key>CFBundleSignature</key>
+-	<string>????</string>
+-	<key>CFBundleVersion</key>
+-	<string>$(FLUTTER_BUILD_NUMBER)</string>
+-	<key>LSRequiresIPhoneOS</key>
+-	<true/>
+-	<key>UILaunchStoryboardName</key>
+-	<string>LaunchScreen</string>
+-	<key>UIMainStoryboardFile</key>
+-	<string>Main</string>
+-	<key>UISupportedInterfaceOrientations</key>
+-	<array>
+-		<string>UIInterfaceOrientationPortrait</string>
+-		<string>UIInterfaceOrientationLandscapeLeft</string>
+-		<string>UIInterfaceOrientationLandscapeRight</string>
+-	</array>
+-	<key>UISupportedInterfaceOrientations~ipad</key>
+-	<array>
+-		<string>UIInterfaceOrientationPortrait</string>
+-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+-		<string>UIInterfaceOrientationLandscapeLeft</string>
+-		<string>UIInterfaceOrientationLandscapeRight</string>
+-	</array>
+-	<key>CADisableMinimumFrameDurationOnPhone</key>
+-	<true/>
+-	<key>UIApplicationSupportsIndirectInputEvents</key>
+-	<true/>
+-	<key>NSLocationWhenInUseUsageDescription</key>
+-<string>We need your location to provide better service.</string>
+-
+-</dict>
+-</plist>
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>CADisableMinimumFrameDurationOnPhone</key>
++	<true/>
++	<key>CFBundleDevelopmentRegion</key>
++	<string>$(DEVELOPMENT_LANGUAGE)</string>
++	<key>CFBundleDisplayName</key>
++	<string>Sarie - Delivery</string>
++	<key>CFBundleExecutable</key>
++	<string>$(EXECUTABLE_NAME)</string>
++	<key>CFBundleIdentifier</key>
++	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
++	<key>CFBundleInfoDictionaryVersion</key>
++	<string>6.0</string>
++	<key>CFBundleName</key>
++	<string>delivery_app</string>
++	<key>CFBundlePackageType</key>
++	<string>APPL</string>
++	<key>CFBundleShortVersionString</key>
++	<string>$(FLUTTER_BUILD_NAME)</string>
++	<key>CFBundleSignature</key>
++	<string>????</string>
++	<key>CFBundleVersion</key>
++	<string>$(FLUTTER_BUILD_NUMBER)</string>
++	<key>LSRequiresIPhoneOS</key>
++	<true/>
++	<key>NSLocationWhenInUseUsageDescription</key>
++	<string>We need your location to provide better service.</string>
++	<key>UIApplicationSupportsIndirectInputEvents</key>
++	<true/>
++	<key>UILaunchStoryboardName</key>
++	<string>LaunchScreen</string>
++	<key>UIMainStoryboardFile</key>
++	<string>Main</string>
++	<key>UISupportedInterfaceOrientations</key>
++	<array>
++		<string>UIInterfaceOrientationPortrait</string>
++		<string>UIInterfaceOrientationLandscapeLeft</string>
++		<string>UIInterfaceOrientationLandscapeRight</string>
++	</array>
++	<key>UISupportedInterfaceOrientations~ipad</key>
++	<array>
++		<string>UIInterfaceOrientationPortrait</string>
++		<string>UIInterfaceOrientationPortraitUpsideDown</string>
++		<string>UIInterfaceOrientationLandscapeLeft</string>
++		<string>UIInterfaceOrientationLandscapeRight</string>
++	</array>
++</dict>
++</plist>
+diff --git a/macos/Flutter/Flutter-Debug.xcconfig b/macos/Flutter/Flutter-Debug.xcconfig
+index f022c34..df4c964 100644
+--- a/macos/Flutter/Flutter-Debug.xcconfig
++++ b/macos/Flutter/Flutter-Debug.xcconfig
+@@ -1 +1,2 @@
++#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+ #include "ephemeral/Flutter-Generated.xcconfig"
+diff --git a/macos/Flutter/Flutter-Release.xcconfig b/macos/Flutter/Flutter-Release.xcconfig
+index f022c34..e79501e 100644
+--- a/macos/Flutter/Flutter-Release.xcconfig
++++ b/macos/Flutter/Flutter-Release.xcconfig
+@@ -1 +1,2 @@
++#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+ #include "ephemeral/Flutter-Generated.xcconfig"
+diff --git a/macos/Podfile b/macos/Podfile
+new file mode 100644
+index 0000000..c795730
+--- /dev/null
++++ b/macos/Podfile
+@@ -0,0 +1,43 @@
++platform :osx, '10.14'
++
++# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
++ENV['COCOAPODS_DISABLE_STATS'] = 'true'
++
++project 'Runner', {
++  'Debug' => :debug,
++  'Profile' => :release,
++  'Release' => :release,
++}
++
++def flutter_root
++  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'), __FILE__)
++  unless File.exist?(generated_xcode_build_settings_path)
++    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure \"flutter pub get\" is executed first"
++  end
++
++  File.foreach(generated_xcode_build_settings_path) do |line|
++    matches = line.match(/FLUTTER_ROOT\=(.*)/)
++    return matches[1].strip if matches
++  end
++  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Flutter-Generated.xcconfig, then run \"flutter pub get\""
++end
++
++require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
++
++flutter_macos_podfile_setup
++
++target 'Runner' do
++  use_frameworks!
++  use_modular_headers!
++
++  flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
++  target 'RunnerTests' do
++    inherit! :search_paths
++  end
++end
++
++post_install do |installer|
++  installer.pods_project.targets.each do |target|
++    flutter_additional_macos_build_settings(target)
++  end
++end
