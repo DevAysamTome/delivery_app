@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import Firebase  // استيراد Firebase
 import AppTrackingTransparency
 import AdSupport
 
@@ -11,6 +12,9 @@ import AdSupport
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
+    
+    // تهيئة Firebase
+    FirebaseApp.configure()
     
     // استدعاء دالة طلب إذن التتبع
     requestTrackingPermission()
