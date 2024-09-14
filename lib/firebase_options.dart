@@ -64,7 +64,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '572219831254',
     projectId: 'sarie-46b77',
     storageBucket: 'sarie-46b77.appspot.com',
-    iosBundleId: 'com.example.deliveryApp',
+    iosBundleId: 'sarie.deliveryApp',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
