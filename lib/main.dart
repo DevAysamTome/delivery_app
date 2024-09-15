@@ -15,18 +15,9 @@ void getToken() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (kIsWeb) {
-    await Firebase.initializeApp(
-        options: const FirebaseOptions(
-            apiKey: "AIzaSyBIY3TUh1CMt72v-LbLYY7RACHISkY_MlA",
-            appId: "1:572219831254:web:eb578252ef66715545ea77",
-            messagingSenderId: "572219831254",
-            projectId: "sarie-46b77"));
-  } else {
-    await Firebase.initializeApp();
-  }
-  getToken();
+  await Firebase.initializeApp();
   runApp(MyApp());
+  getToken();
 }
 
 class MyApp extends StatelessWidget {
