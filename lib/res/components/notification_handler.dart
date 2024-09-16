@@ -7,19 +7,34 @@ class NotificationHandler {
       FlutterLocalNotificationsPlugin();
 
   NotificationHandler() {
+    // إعدادات iOS الحديثة
+    const DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings();
+
+    // إعدادات Android
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    // جمع إعدادات المنصتين
     final InitializationSettings initializationSettings =
-        const InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsDarwin,
     );
 
+    // تهيئة إعدادات الإشعارات
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
+    // طلب إذن للإشعارات من Firebase
     _firebaseMessaging.requestPermission();
+
+    // الاستماع إلى رسائل Firebase
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       showNotification(message.notification!.title, message.notification!.body);
     });
   }
 
+  // دالة لإظهار الإشعارات
   void showNotification(String? title, String? body) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
@@ -29,8 +44,15 @@ class NotificationHandler {
       priority: Priority.high,
       showWhen: false,
     );
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    const DarwinNotificationDetails darwinPlatformChannelSpecifics =
+        DarwinNotificationDetails();
+
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: darwinPlatformChannelSpecifics,
+    );
+
     await flutterLocalNotificationsPlugin.show(
       0,
       title,
