@@ -21,7 +21,7 @@ class AuthController {
       User? user = userCredential.user;
 
       if (user != null) {
-        await _checkLocationPermission();
+        await _checkLocationPermission(context);
 
         await _updateLocation(user.uid);
         _startLocationUpdates(user.uid);
@@ -78,14 +78,27 @@ class AuthController {
     return null;
   }
 
-  Future<void> _checkLocationPermission() async {
-    PermissionStatus status = await Permission.locationWhenInUse.status;
-    if (!status.isGranted) {
-      status = await Permission.locationWhenInUse.request();
+  Future<void> _checkLocationPermission(BuildContext context) async {
+    try {
+      PermissionStatus status = await Permission.locationWhenInUse.status;
+      print("Current status: $status");
+
       if (!status.isGranted) {
-        throw Exception(
-            "User denied permissions to access the device's location.");
+        status = await Permission.locationWhenInUse.request();
+
+        print("Requesting permission");
+        status = await Permission.locationWhenInUse.request();
+        print("Permission status after request: $status");
       }
+    } catch (e) {
+      print("Error checking location permission: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Failed to get location permissions. Please check your settings.'),
+        ),
+      );
+      rethrow;
     }
   }
 
