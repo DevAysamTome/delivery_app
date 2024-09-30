@@ -21,10 +21,6 @@ class AuthController {
       User? user = userCredential.user;
 
       if (user != null) {
-        await _checkLocationPermission(context);
-
-        await _updateLocation(user.uid);
-        _startLocationUpdates(user.uid);
         // الحصول على مستند المستخدم من قاعدة البيانات
         DocumentSnapshot userDoc =
             await _firestore.collection('users').doc(user.uid).get();
@@ -34,17 +30,30 @@ class AuthController {
               userDoc.data() as Map<String, dynamic>;
 
           // التحقق من دور المستخدم
+          print("User role: ${userData['role']}");
           if (userData['role'] == 'delivery') {
             // الحصول على رمز FCM وتخزينه
             final String? token = await _firebaseMessaging.getToken();
-
             if (token != null) {
+              print("FCM Token: $token");
+              await _checkLocationPermission(context);
+              await _updateLocation(user.uid);
+              _startLocationUpdates(user.uid);
+
               await _firestore.collection('deliveryWorkers').doc(user.uid).set({
                 'fcmToken': token,
               }, SetOptions(merge: true));
-            }
 
-            return user;
+              return user;
+            } else {
+              print("Failed to retrieve FCM token.");
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Failed to retrieve FCM token.'),
+                ),
+              );
+              return null;
+            }
           } else {
             // إظهار رسالة خطأ
             ScaffoldMessenger.of(context).showSnackBar(
@@ -59,23 +68,21 @@ class AuthController {
           // إظهار رسالة خطأ
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('User document does not exist.'),
+              content: Text('User document does not exist or is empty.'),
             ),
           );
           return null;
         }
       }
     } catch (e) {
-      print(e);
-      // إظهار رسالة خطأ
+      print("Error during sign-in: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('An error occurred. Please try again.'),
+        SnackBar(
+          content: Text('An error occurred: $e'),
         ),
       );
       return null;
     }
-    return null;
   }
 
   Future<void> _checkLocationPermission(BuildContext context) async {
