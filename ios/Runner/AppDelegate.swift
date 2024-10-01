@@ -5,7 +5,7 @@ import Firebase
 import UserNotifications
 
 @UIApplicationMain
-@objc class AppDelegate: FlutterAppDelegate, CLLocationManagerDelegate, UNUserNotificationCenterDelegate {
+@objc class AppDelegate: FlutterAppDelegate, CLLocationManagerDelegate {
 
   var locationManager: CLLocationManager?
 
@@ -74,14 +74,14 @@ import UserNotifications
   }
 
   // UNUserNotificationCenterDelegate method for foreground notifications
-  override func userNotificationCenter(_ center: UNUserNotificationCenter,
+  func userNotificationCenter(_ center: UNUserNotificationCenter,
                               willPresent notification: UNNotification,
                               withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
     completionHandler([.alert, .badge, .sound])
   }
 
   // UNUserNotificationCenterDelegate method for handling user interaction with notifications
-  override func userNotificationCenter(_ center: UNUserNotificationCenter,
+  func userNotificationCenter(_ center: UNUserNotificationCenter,
                               didReceive response: UNNotificationResponse,
                               withCompletionHandler completionHandler: @escaping () -> Void) {
     // Handle the notification interaction here
