@@ -74,14 +74,14 @@ import UserNotifications
   }
 
   // UNUserNotificationCenterDelegate method for foreground notifications
-  func userNotificationCenter(_ center: UNUserNotificationCenter,
+  override func userNotificationCenter(_ center: UNUserNotificationCenter,
                               willPresent notification: UNNotification,
                               withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
     completionHandler([.alert, .badge, .sound])
   }
 
   // UNUserNotificationCenterDelegate method for handling user interaction with notifications
-  func userNotificationCenter(_ center: UNUserNotificationCenter,
+  override func userNotificationCenter(_ center: UNUserNotificationCenter,
                               didReceive response: UNNotificationResponse,
                               withCompletionHandler completionHandler: @escaping () -> Void) {
     // Handle the notification interaction here
