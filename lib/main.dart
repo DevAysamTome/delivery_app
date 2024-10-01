@@ -7,17 +7,34 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 
-void getToken() async {
-  String? token = await FirebaseMessaging.instance.getToken();
-  String? tokenIos = await FirebaseMessaging.instance.getAPNSToken();
-  print("Device Token: $token");
+Future<void> getToken() async {
+  // Fetch the FCM token
+  String? fcmToken = await FirebaseMessaging.instance.getToken();
+  print("FCM Token: $fcmToken");
+
+  // For iOS, ensure the APNs token is available
+  String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+  print("APNs Token: $apnsToken");
+
+  // Log both tokens for further use
+  if (apnsToken != null) {
+    // If you need to send both tokens to your server, you can do it here.
+    print("APNs Token is available and FCM plugin API can now make requests.");
+  }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  getToken();
 
+  // Get FCM and APNs token (if applicable)
+  await getToken();
+
+  // Request permission for notifications on iOS (provisional ensures user isn't prompted immediately)
+  final notificationSettings =
+      await FirebaseMessaging.instance.requestPermission(provisional: true);
+
+  // Run the app
   runApp(MyApp());
 }
 
