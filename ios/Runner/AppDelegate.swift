@@ -14,8 +14,13 @@ import UserNotifications
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
 
+    // Initialize Firebase
     FirebaseApp.configure()
+
+    // Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyBzdajHgG7xEXtoglNS42Jbh8NdMUj2DXk")
+    
+    // Register the generated Flutter plugins
     GeneratedPluginRegistrant.register(with: self)
 
     // Location Manager setup
@@ -38,6 +43,7 @@ import UserNotifications
       application.registerUserNotificationSettings(settings)
     }
 
+    // Register for remote notifications
     application.registerForRemoteNotifications()
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -54,7 +60,7 @@ import UserNotifications
     print("Failed to register for remote notifications: \(error)")
   }
 
-  // CLLocationManagerDelegate method
+  // CLLocationManagerDelegate method for handling location permissions
   func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
     switch status {
     case .authorizedWhenInUse, .authorizedAlways:
@@ -65,5 +71,20 @@ import UserNotifications
     default:
       break
     }
+  }
+
+  // UNUserNotificationCenterDelegate method for foreground notifications
+  func userNotificationCenter(_ center: UNUserNotificationCenter,
+                              willPresent notification: UNNotification,
+                              withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    completionHandler([.alert, .badge, .sound])
+  }
+
+  // UNUserNotificationCenterDelegate method for handling user interaction with notifications
+  func userNotificationCenter(_ center: UNUserNotificationCenter,
+                              didReceive response: UNNotificationResponse,
+                              withCompletionHandler completionHandler: @escaping () -> Void) {
+    // Handle the notification interaction here
+    completionHandler()
   }
 }
