@@ -9,6 +9,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 void getToken() async {
   String? token = await FirebaseMessaging.instance.getToken();
+  String? tokenIos = await FirebaseMessaging.instance.getAPNSToken();
   print("Device Token: $token");
 }
 
