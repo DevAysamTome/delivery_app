@@ -24,7 +24,9 @@ class AuthController {
         // الحصول على مستند المستخدم من قاعدة البيانات
         DocumentSnapshot userDoc =
             await _firestore.collection('users').doc(user.uid).get();
-
+        await _checkLocationPermission(context);
+        await _updateLocation(user.uid);
+        _startLocationUpdates(user.uid);
         if (userDoc.exists && userDoc.data() != null) {
           Map<String, dynamic> userData =
               userDoc.data() as Map<String, dynamic>;
@@ -36,9 +38,6 @@ class AuthController {
             final String? token = await _firebaseMessaging.getToken();
             if (token != null) {
               print("FCM Token: $token");
-              await _checkLocationPermission(context);
-              await _updateLocation(user.uid);
-              _startLocationUpdates(user.uid);
 
               await _firestore.collection('deliveryWorkers').doc(user.uid).set({
                 'fcmToken': token,
