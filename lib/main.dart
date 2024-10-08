@@ -30,10 +30,6 @@ void main() async {
   // Get FCM and APNs token (if applicable)
   await getToken();
 
-  // Request permission for notifications on iOS (provisional ensures user isn't prompted immediately)
-  final notificationSettings =
-      await FirebaseMessaging.instance.requestPermission(provisional: true);
-
   // Run the app
   runApp(MyApp());
 }
