@@ -12,15 +12,7 @@ Future<void> getToken() async {
   String? fcmToken = await FirebaseMessaging.instance.getToken();
   print("FCM Token: $fcmToken");
 
-  // For iOS, ensure the APNs token is available
-  String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-  print("APNs Token: $apnsToken");
-
-  // Log both tokens for further use
-  if (apnsToken != null) {
-    // If you need to send both tokens to your server, you can do it here.
-    print("APNs Token is available and FCM plugin API can now make requests.");
-  }
+  // For iOS, ensure the APNs token is availabl
 }
 
 void main() async {
