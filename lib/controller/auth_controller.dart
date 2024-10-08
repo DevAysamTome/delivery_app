@@ -28,9 +28,7 @@ class AuthController {
         if (userDoc.exists && userDoc.data() != null) {
           Map<String, dynamic> userData =
               userDoc.data() as Map<String, dynamic>;
-          await _checkLocationPermission(context);
-          await _updateLocation(user.uid);
-          _startLocationUpdates(user.uid);
+
           // التحقق من دور المستخدم
           print("User role: ${userData['role']}");
           if (userData['role'] == 'delivery') {
@@ -38,6 +36,9 @@ class AuthController {
             final String? token = await _firebaseMessaging.getToken();
             if (token != null) {
               print("FCM Token: $token");
+              await _checkLocationPermission(context);
+              await _updateLocation(user.uid);
+              _startLocationUpdates(user.uid);
 
               await _firestore.collection('deliveryWorkers').doc(user.uid).set({
                 'fcmToken': token,
