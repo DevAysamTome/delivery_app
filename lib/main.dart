@@ -23,6 +23,7 @@ void main() async {
   await getToken();
 
   // Run the app
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
