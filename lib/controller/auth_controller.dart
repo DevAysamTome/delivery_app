@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -21,7 +23,6 @@ class AuthController {
       User? user = userCredential.user;
 
       if (user != null) {
-        // الحصول على مستند المستخدم من قاعدة البيانات
         DocumentSnapshot userDoc =
             await _firestore.collection('users').doc(user.uid).get();
 
@@ -29,43 +30,52 @@ class AuthController {
           Map<String, dynamic> userData =
               userDoc.data() as Map<String, dynamic>;
 
-          // التحقق من دور المستخدم
           print("User role: ${userData['role']}");
           if (userData['role'] == 'delivery') {
-            // الحصول على رمز FCM وتخزينه
-            final String? token = await _firebaseMessaging.getToken();
+            String? fcmToken = await FirebaseMessaging.instance.getToken();
+            String? apnsToken;
+
+            // For iOS, fetch the APNs token if available
+            if (Platform.isIOS) {
+              apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+              print("APNs Token: $apnsToken");
+            }
+
+            // Use the APNs token if available, else use the FCM token
+            String? token = apnsToken ?? fcmToken;
+
             if (token != null) {
-              print("FCM Token: $token");
+              print("Token used for push notifications: $token");
+
               await _checkLocationPermission(context);
               await _updateLocation(user.uid);
               _startLocationUpdates(user.uid);
 
+              // Store FCM or APNs token in Firestore
               await _firestore.collection('deliveryWorkers').doc(user.uid).set({
                 'fcmToken': token,
               }, SetOptions(merge: true));
 
               return user;
             } else {
-              print("Failed to retrieve FCM token.");
+              print("Failed to retrieve token.");
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Failed to retrieve FCM token.'),
+                  content: Text('Failed to retrieve push notification token.'),
                 ),
               );
               return null;
             }
           } else {
-            // إظهار رسالة خطأ
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Access denied. User is not a delivery worker.'),
               ),
             );
-            await _auth.signOut(); // تسجيل خروج المستخدم
+            await _auth.signOut();
             return null;
           }
         } else {
-          // إظهار رسالة خطأ
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('User document does not exist or is empty.'),

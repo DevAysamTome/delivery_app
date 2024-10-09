@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:delivery_app/res/components/notification_handler.dart';
 import 'package:delivery_app/views/home/home_screen.dart';
 import 'package:delivery_app/views/login_views/login_view.dart';
@@ -12,7 +14,30 @@ Future<void> getToken() async {
   String? fcmToken = await FirebaseMessaging.instance.getToken();
   print("FCM Token: $fcmToken");
 
-  // For iOS, ensure the APNs token is availabl
+  // For iOS, ensure the APNs token is available
+  if (Platform.isIOS) {
+    String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+    print("APNs Token: $apnsToken");
+  }
+}
+
+Future<void> _requestNotificationPermissions() async {
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  // Request permission for notifications
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    print('User granted permission');
+  } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+    print('User granted provisional permission');
+  } else {
+    print('User declined or has not accepted permission');
+  }
 }
 
 void main() async {
@@ -20,6 +45,8 @@ void main() async {
   await Firebase.initializeApp();
   runApp(MyApp());
   // Get FCM and APNs token (if applicable)
+  await _requestNotificationPermissions();
+
   await getToken();
 
   // Run the app
