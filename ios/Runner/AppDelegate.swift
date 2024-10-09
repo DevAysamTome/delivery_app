@@ -7,20 +7,20 @@ import UserNotifications
 
 @UIApplicationMain
 @objc class AppDelegate: FlutterAppDelegate, MessagingDelegate, CLLocationManagerDelegate {
-  
+
   var locationManager: CLLocationManager?
 
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    
+
     // Firebase configuration
     FirebaseApp.configure()
 
     // Set UNUserNotificationCenter delegate (without re-declaring it in class conformance)
     if #available(iOS 10.0, *) {
-      UNUserNotificationCenter.current().delegate = self  // Just set the delegate here
+      UNUserNotificationCenter.current().delegate = self
       let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
       UNUserNotificationCenter.current().requestAuthorization(
         options: authOptions,
@@ -45,7 +45,7 @@ import UserNotifications
     // Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyBzdajHgG7xEXtoglNS42Jbh8NdMUj2DXk")
     GeneratedPluginRegistrant.register(with: self)
-    
+
     // Location Manager setup
     locationManager = CLLocationManager()
     locationManager?.delegate = self
@@ -60,6 +60,7 @@ import UserNotifications
     Messaging.messaging().apnsToken = deviceToken
   }
 
+  // Add 'override' here for didFailToRegisterForRemoteNotificationsWithError
   override func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
     print("Failed to register for remote notifications: \(error.localizedDescription)")
   }
