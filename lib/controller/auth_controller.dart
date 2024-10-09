@@ -38,10 +38,15 @@ class AuthController {
             // For iOS, fetch the APNs token if available
             if (Platform.isIOS) {
               apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-              print("APNs Token: $apnsToken");
+
+              if (apnsToken == null) {
+                print("APNs token is not available yet. Using FCM token.");
+              } else {
+                print("APNs Token: $apnsToken");
+              }
             }
 
-            // Use the APNs token if available, else use the FCM token
+// Use the APNs token if available, else use the FCM token
             String? token = apnsToken ?? fcmToken;
 
             if (token != null) {
