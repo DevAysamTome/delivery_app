@@ -18,12 +18,11 @@ Future<void> getToken() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-
+  runApp(MyApp());
   // Get FCM and APNs token (if applicable)
   await getToken();
 
   // Run the app
-  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
