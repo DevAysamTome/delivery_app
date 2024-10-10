@@ -73,14 +73,14 @@ import UserNotifications
 
   // UNUserNotificationCenter delegate method to handle notifications in foreground
   @available(iOS 10.0, *)
-  func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    override func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
     // Show notification while the app is in the foreground
     completionHandler([.alert, .badge, .sound])
   }
 
   // UNUserNotificationCenter delegate method to handle notification response when tapped
   @available(iOS 10.0, *)
-  func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    override func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
     completionHandler()
   }
 

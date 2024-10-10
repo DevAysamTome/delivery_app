@@ -1267,18 +1267,24 @@ index 0000000..64b1084
 +PODFILE CHECKSUM: 4fca1bc9ad58ec974efb6b63239a253c18f0d5d1
 +
 +COCOAPODS: 1.14.3
-diff --git a/lib/main.dart b/lib/main.dart
-index ad9e9a2..2d0b126 100644
---- a/lib/main.dart
-+++ b/lib/main.dart
-@@ -30,10 +30,6 @@ void main() async {
-   // Get FCM and APNs token (if applicable)
-   await getToken();
+diff --git a/ios/Runner/AppDelegate.swift b/ios/Runner/AppDelegate.swift
+index 38dd6bb..a9d451d 100644
+--- a/ios/Runner/AppDelegate.swift
++++ b/ios/Runner/AppDelegate.swift
+@@ -73,14 +73,14 @@ import UserNotifications
  
--  // Request permission for notifications on iOS (provisional ensures user isn't prompted immediately)
--  final notificationSettings =
--      await FirebaseMessaging.instance.requestPermission(provisional: true);
--
-   // Run the app
-   runApp(MyApp());
- }
+   // UNUserNotificationCenter delegate method to handle notifications in foreground
+   @available(iOS 10.0, *)
+-  func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
++    override func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+     // Show notification while the app is in the foreground
+     completionHandler([.alert, .badge, .sound])
+   }
+ 
+   // UNUserNotificationCenter delegate method to handle notification response when tapped
+   @available(iOS 10.0, *)
+-  func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
++    override func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+     completionHandler()
+   }
+ 
