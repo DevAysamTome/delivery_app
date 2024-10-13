@@ -16,6 +16,7 @@ Future<void> getToken() async {
 
   // For iOS, ensure the APNs token is available
   if (Platform.isIOS) {
+    FirebaseMessaging.instance.requestPermission();
     String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
     print("APNs Token: $apnsToken");
   }
@@ -43,7 +44,6 @@ Future<void> _requestNotificationPermissions() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(MyApp());
   // Get FCM and APNs token (if applicable)
   await _requestNotificationPermissions();
 
