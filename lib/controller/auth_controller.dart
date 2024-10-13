@@ -37,6 +37,7 @@ class AuthController {
 
             // For iOS, fetch the APNs token if available
             if (Platform.isIOS) {
+              await FirebaseMessaging.instance.requestPermission();
               apnsToken = await FirebaseMessaging.instance.getAPNSToken();
 
               if (apnsToken == null) {
