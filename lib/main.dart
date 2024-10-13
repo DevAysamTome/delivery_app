@@ -22,33 +22,30 @@ Future<void> getToken() async {
   }
 }
 
-Future<void> _requestNotificationPermissions() async {
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
+// Future<void> _requestNotificationPermissions() async {
+//   FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-  // Request permission for notifications
-  NotificationSettings settings = await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+//   // Request permission for notifications
+//   NotificationSettings settings = await messaging.requestPermission(
+//     alert: true,
+//     badge: true,
+//     sound: true,
+//   );
 
-  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-    print('User granted permission');
-  } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
-    print('User granted provisional permission');
-  } else {
-    print('User declined or has not accepted permission');
-  }
-}
+//   if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+//     print('User granted permission');
+//   } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+//     print('User granted provisional permission');
+//   } else {
+//     print('User declined or has not accepted permission');
+//   }
+// }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   // Get FCM and APNs token (if applicable)
-  await _requestNotificationPermissions();
-
   await getToken();
-
   // Run the app
   runApp(MyApp());
 }
