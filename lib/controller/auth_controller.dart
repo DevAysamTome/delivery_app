@@ -32,35 +32,50 @@ class AuthController {
 
           print("User role: ${userData['role']}");
           if (userData['role'] == 'delivery') {
-            String? fcmToken = await FirebaseMessaging.instance.getToken();
+            String? token;
 
-            // For iOS, fetch the APNs token if available
+            // For iOS, fetch the APNs token repeatedly until it's available
+            if (Platform.isIOS) {
+              const int maxAttempts = 5;
+              const Duration delay = Duration(seconds: 3);
+              int attempts = 0;
 
-            // Use APNs token if available, otherwise use FCM token
-            String? token = fcmToken;
+              while (token == null && attempts < maxAttempts) {
+                token = await _firebaseMessaging.getAPNSToken();
+                if (token == null) {
+                  print("APNs token not available, retrying...");
+                  attempts++;
+                  await Future.delayed(delay);
+                }
+              }
 
-            if (token != null) {
-              print("Token used for push notifications: $token");
-
-              await _checkLocationPermission(context);
-              await _updateLocation(user.uid);
-              _startLocationUpdates(user.uid);
-
-              // Store FCM or APNs token in Firestore
-              await _firestore.collection('deliveryWorkers').doc(user.uid).set({
-                'fcmToken': token,
-              }, SetOptions(merge: true));
-
-              return user;
+              if (token == null) {
+                print(
+                    "Failed to retrieve APNs token after $maxAttempts attempts.");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to retrieve APNs token.'),
+                  ),
+                );
+                return null;
+              }
             } else {
-              print("Failed to retrieve token.");
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Failed to retrieve push notification token.'),
-                ),
-              );
-              return null;
+              // For Android, simply get the FCM token
+              token = await _firebaseMessaging.getToken();
             }
+
+            print("Token used for push notifications: $token");
+
+            await _checkLocationPermission(context);
+            await _updateLocation(user.uid);
+            _startLocationUpdates(user.uid);
+
+            // Store FCM or APNs token in Firestore
+            await _firestore.collection('deliveryWorkers').doc(user.uid).set({
+              'fcmToken': token,
+            }, SetOptions(merge: true));
+
+            return user;
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -88,7 +103,6 @@ class AuthController {
       );
       return null;
     }
-    return null;
   }
 
   Future<void> _checkLocationPermission(BuildContext context) async {
