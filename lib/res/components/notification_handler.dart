@@ -64,7 +64,13 @@ class NotificationHandler {
     );
 
     const DarwinNotificationDetails darwinPlatformChannelSpecifics =
-        DarwinNotificationDetails();
+        DarwinNotificationDetails(
+      badgeNumber: 1, // لعرض رقم الشارات على أيقونة التطبيق
+      sound: 'default', // لتعيين الصوت الافتراضي للإشعارات
+      presentAlert: true, // لعرض التنبيه عند استلام الإشعار
+      presentBadge: true, // لتحديث رقم الشارة
+      presentSound: true, // لتشغيل الصوت عند استلام الإشعار
+    );
 
     const NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
