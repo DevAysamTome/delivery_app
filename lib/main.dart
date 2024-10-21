@@ -9,8 +9,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 
-
-
 // Future<void> _requestNotificationPermissions() async {
 //   FirebaseMessaging messaging = FirebaseMessaging.instance;
 
@@ -33,6 +31,8 @@ import 'package:firebase_core/firebase_core.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await Future.delayed(const Duration(seconds: 1));
+  await FirebaseMessaging.instance.getAPNSToken();
   // Get FCM and APNs token (if applicable)
   // Run the app
   runApp(MyApp());
