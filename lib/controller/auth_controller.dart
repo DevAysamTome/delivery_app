@@ -37,7 +37,22 @@ class AuthController {
 
             // For iOS, fetch the APNs token if available
             if (Platform.isIOS) {
-              await FirebaseMessaging.instance.requestPermission();
+              await FirebaseMessaging.instance
+                  .requestPermission(
+                alert: true,
+                badge: true,
+                sound: true,
+              )
+                  .then((settings) {
+                if (settings.authorizationStatus ==
+                    AuthorizationStatus.authorized) {
+                  print('User granted permission');
+                } else {
+                  print(
+                      'User denied or has not accepted notification permission');
+                }
+              });
+
               apnsToken = await FirebaseMessaging.instance.getAPNSToken();
 
               if (apnsToken == null) {
