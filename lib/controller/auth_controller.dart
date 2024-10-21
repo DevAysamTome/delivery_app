@@ -33,35 +33,11 @@ class AuthController {
           print("User role: ${userData['role']}");
           if (userData['role'] == 'delivery') {
             String? fcmToken = await FirebaseMessaging.instance.getToken();
-            String? apnsToken;
 
             // For iOS, fetch the APNs token if available
-            if (Platform.isIOS) {
-              String? apnsToken = await _firebaseMessaging.getAPNSToken();
-
-              if (apnsToken != null) {
-                // تم الحصول على رمز APNs في المحاولة الأولى
-                print("APNs Token: $apnsToken");
-              } else {
-                // إذا لم يتم الحصول على الرمز، انتظر لمدة 3 ثوانٍ ثم حاول مرة أخرى
-                await Future<void>.delayed(const Duration(seconds: 10));
-
-                apnsToken = await _firebaseMessaging.getAPNSToken();
-
-                if (apnsToken != null) {
-                  // تم الحصول على الرمز بعد المحاولة الثانية
-                  print("APNs Token after retry: $apnsToken");
-                } else {
-                  // إذا لم يتم الحصول على الرمز بعد المحاولة الثانية
-                  print("Failed to retrieve APNs token after second attempt.");
-                }
-              }
-            } else {
-              print("This platform does not support APNs.");
-            }
 
             // Use APNs token if available, otherwise use FCM token
-            String? token = apnsToken ?? fcmToken;
+            String? token = fcmToken;
 
             if (token != null) {
               print("Token used for push notifications: $token");
