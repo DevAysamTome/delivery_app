@@ -47,21 +47,28 @@ class AuthController {
                   AuthorizationStatus.authorized) {
                 print('User granted notification permission');
 
-                // إضافة التأخير قبل الحصول على رمز APNs
-                await Future.delayed(const Duration(seconds: 5), () async {
+                // محاولات متعددة للحصول على APNs Token مع تأخير بين كل محاولة
+                int attempts = 5; // عدد المحاولات
+                const int delaySeconds =
+                    5; // مدة الانتظار بين المحاولات بالثواني
+
+                for (int i = 0; i < attempts; i++) {
                   apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-                  if (apnsToken == null) {
-                    print("APNs token not available yet, waiting for it.");
-                    FirebaseMessaging.instance.onTokenRefresh
-                        .listen((newToken) {
-                      print("New token received (iOS): $newToken");
-                      apnsToken =
-                          newToken; // Update the token when it's available
-                    });
-                  } else {
+
+                  if (apnsToken != null) {
                     print("APNs Token: $apnsToken");
+                    break; // الخروج من الحلقة إذا تم الحصول على الرمز
+                  } else {
+                    print("APNs token not available yet, attempt ${i + 1}");
+                    // تأخير قبل المحاولة التالية
+                    await Future.delayed(const Duration(seconds: delaySeconds));
                   }
-                });
+                }
+
+                if (apnsToken == null) {
+                  print(
+                      "Failed to retrieve APNs token after $attempts attempts.");
+                }
               } else {
                 print(
                     'User denied or has not accepted notification permission');
@@ -120,6 +127,7 @@ class AuthController {
       );
       return null;
     }
+    return null;
   }
 
   Future<void> _checkLocationPermission(BuildContext context) async {

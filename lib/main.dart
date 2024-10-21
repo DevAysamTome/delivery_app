@@ -31,23 +31,7 @@ import 'package:firebase_core/firebase_core.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
-  NotificationSettings settings = await messaging.requestPermission(
-    alert: true,
-    announcement: false,
-    badge: true,
-    carPlay: false,
-    criticalAlert: false,
-    provisional: false,
-    sound: true,
-  );
 
-  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-    print('User granted permission');
-    await FirebaseMessaging.instance.getAPNSToken();
-  } else {
-    print('User declined or has not accepted notification permission');
-  }
   // Get FCM and APNs token (if applicable)
   // Run the app
   runApp(MyApp());
