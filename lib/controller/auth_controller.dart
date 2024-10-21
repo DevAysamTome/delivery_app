@@ -46,25 +46,29 @@ class AuthController {
               if (settings.authorizationStatus ==
                   AuthorizationStatus.authorized) {
                 print('User granted notification permission');
-                apnsToken = await FirebaseMessaging.instance.getAPNSToken();
 
-                if (apnsToken == null) {
-                  print("APNs token not available yet, waiting for it.");
-                  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-                    print("New token received (iOS): $newToken");
-                    apnsToken =
-                        newToken; // Update the token when it's available
-                  });
-                } else {
-                  print("APNs Token: $apnsToken");
-                }
+                // إضافة التأخير قبل الحصول على رمز APNs
+                await Future.delayed(const Duration(seconds: 5), () async {
+                  apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+                  if (apnsToken == null) {
+                    print("APNs token not available yet, waiting for it.");
+                    FirebaseMessaging.instance.onTokenRefresh
+                        .listen((newToken) {
+                      print("New token received (iOS): $newToken");
+                      apnsToken =
+                          newToken; // Update the token when it's available
+                    });
+                  } else {
+                    print("APNs Token: $apnsToken");
+                  }
+                });
               } else {
                 print(
                     'User denied or has not accepted notification permission');
               }
             }
 
-// Use APNs token if available, otherwise use FCM token
+            // Use APNs token if available, otherwise use FCM token
             String? token = apnsToken ?? fcmToken;
 
             if (token != null) {

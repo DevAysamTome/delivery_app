@@ -44,6 +44,7 @@ void main() async {
 
   if (settings.authorizationStatus == AuthorizationStatus.authorized) {
     print('User granted permission');
+    await FirebaseMessaging.instance.getAPNSToken();
   } else {
     print('User declined or has not accepted notification permission');
   }
