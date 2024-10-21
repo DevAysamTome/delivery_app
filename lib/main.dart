@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:delivery_app/res/components/notification_handler.dart';
 import 'package:delivery_app/views/home/home_screen.dart';
 import 'package:delivery_app/views/login_views/login_view.dart';
@@ -31,6 +29,8 @@ import 'package:firebase_core/firebase_core.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await FirebaseMessaging.instance.getToken();
+  await FirebaseMessaging.instance.getAPNSToken();
 
   // Get FCM and APNs token (if applicable)
   // Run the app
