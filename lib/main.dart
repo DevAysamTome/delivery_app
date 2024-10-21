@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:delivery_app/res/components/notification_handler.dart';
 import 'package:delivery_app/views/home/home_screen.dart';
 import 'package:delivery_app/views/login_views/login_view.dart';
@@ -30,8 +32,29 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await FirebaseMessaging.instance.getToken();
-  await FirebaseMessaging.instance.getAPNSToken();
+  if (Platform.isIOS) {
+    String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
 
+    if (apnsToken != null) {
+      // تم الحصول على رمز APNs في المحاولة الأولى
+      print("APNs Token: $apnsToken");
+    } else {
+      // إذا لم يتم الحصول على الرمز، انتظر لمدة 3 ثوانٍ ثم حاول مرة أخرى
+      await Future<void>.delayed(const Duration(seconds: 5));
+
+      apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+
+      if (apnsToken != null) {
+        // تم الحصول على الرمز بعد المحاولة الثانية
+        print("APNs Token after retry: $apnsToken");
+      } else {
+        // إذا لم يتم الحصول على الرمز بعد المحاولة الثانية
+        print("Failed to retrieve APNs token after second attempt.");
+      }
+    }
+  } else {
+    print("This platform does not support APNs.");
+  }
   // Get FCM and APNs token (if applicable)
   // Run the app
   runApp(MyApp());
