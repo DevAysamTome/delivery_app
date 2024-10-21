@@ -37,32 +37,34 @@ class AuthController {
 
             // For iOS, fetch the APNs token if available
             if (Platform.isIOS) {
-              await FirebaseMessaging.instance
-                  .requestPermission(
+              NotificationSettings settings =
+                  await FirebaseMessaging.instance.requestPermission(
                 alert: true,
                 badge: true,
                 sound: true,
-              )
-                  .then((settings) {
-                if (settings.authorizationStatus ==
-                    AuthorizationStatus.authorized) {
-                  print('User granted permission');
+              );
+              if (settings.authorizationStatus ==
+                  AuthorizationStatus.authorized) {
+                print('User granted notification permission');
+                apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+
+                if (apnsToken == null) {
+                  print("APNs token not available yet, waiting for it.");
+                  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+                    print("New token received (iOS): $newToken");
+                    apnsToken =
+                        newToken; // Update the token when it's available
+                  });
                 } else {
-                  print(
-                      'User denied or has not accepted notification permission');
+                  print("APNs Token: $apnsToken");
                 }
-              });
-
-              apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-
-              if (apnsToken == null) {
-                print("APNs token is not available yet. Using FCM token.");
               } else {
-                print("APNs Token: $apnsToken");
+                print(
+                    'User denied or has not accepted notification permission');
               }
             }
 
-// Use the APNs token if available, else use the FCM token
+// Use APNs token if available, otherwise use FCM token
             String? token = apnsToken ?? fcmToken;
 
             if (token != null) {
