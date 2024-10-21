@@ -37,42 +37,27 @@ class AuthController {
 
             // For iOS, fetch the APNs token if available
             if (Platform.isIOS) {
-              NotificationSettings settings =
-                  await FirebaseMessaging.instance.requestPermission(
-                alert: true,
-                badge: true,
-                sound: true,
-              );
-              if (settings.authorizationStatus ==
-                  AuthorizationStatus.authorized) {
-                print('User granted notification permission');
+              String? apnsToken = await _firebaseMessaging.getAPNSToken();
 
-                // محاولات متعددة للحصول على APNs Token مع تأخير بين كل محاولة
-                int attempts = 5; // عدد المحاولات
-                const int delaySeconds =
-                    5; // مدة الانتظار بين المحاولات بالثواني
-
-                for (int i = 0; i < attempts; i++) {
-                  apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-
-                  if (apnsToken != null) {
-                    print("APNs Token: $apnsToken");
-                    break; // الخروج من الحلقة إذا تم الحصول على الرمز
-                  } else {
-                    print("APNs token not available yet, attempt ${i + 1}");
-                    // تأخير قبل المحاولة التالية
-                    await Future.delayed(const Duration(seconds: delaySeconds));
-                  }
-                }
-
-                if (apnsToken == null) {
-                  print(
-                      "Failed to retrieve APNs token after $attempts attempts.");
-                }
+              if (apnsToken != null) {
+                // تم الحصول على رمز APNs في المحاولة الأولى
+                print("APNs Token: $apnsToken");
               } else {
-                print(
-                    'User denied or has not accepted notification permission');
+                // إذا لم يتم الحصول على الرمز، انتظر لمدة 3 ثوانٍ ثم حاول مرة أخرى
+                await Future<void>.delayed(const Duration(seconds: 10));
+
+                apnsToken = await _firebaseMessaging.getAPNSToken();
+
+                if (apnsToken != null) {
+                  // تم الحصول على الرمز بعد المحاولة الثانية
+                  print("APNs Token after retry: $apnsToken");
+                } else {
+                  // إذا لم يتم الحصول على الرمز بعد المحاولة الثانية
+                  print("Failed to retrieve APNs token after second attempt.");
+                }
               }
+            } else {
+              print("This platform does not support APNs.");
             }
 
             // Use APNs token if available, otherwise use FCM token
