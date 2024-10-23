@@ -20,18 +20,16 @@ import UserNotifications
 
     // Set UNUserNotificationCenter delegate (without re-declaring it in class conformance)
     if #available(iOS 10.0, *) {
-      UNUserNotificationCenter.current().delegate = self
-      let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-      UNUserNotificationCenter.current().requestAuthorization(
-        options: authOptions,
-        completionHandler: { granted, error in
-          if granted {
-            DispatchQueue.main.async {
-              application.registerForRemoteNotifications()
-            }
-          }
-        }
-      )
+      
+  UNUserNotificationCenter.current().delegate = self
+
+  let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+  UNUserNotificationCenter.current().requestAuthorization(
+  options: authOptions,
+  completionHandler: { _, _ in }
+  )
+
+  application.registerForRemoteNotifications()
     } else {
       let settings: UIUserNotificationSettings =
         UIUserNotificationSettings(types: [.alert, .badge, .sound], categories: nil)
@@ -94,5 +92,37 @@ import UserNotifications
     default:
       break
     }
+  }
+}
+extension AppDelegate: UNUserNotificationCenterDelegate {
+  // Receive displayed notifications for iOS 10 devices.
+  func userNotificationCenter(_ center: UNUserNotificationCenter,
+                              willPresent notification: UNNotification) async
+    -> UNNotificationPresentationOptions {
+    let userInfo = notification.request.content.userInfo
+
+    // With swizzling disabled you must let Messaging know about the message, for Analytics
+    // Messaging.messaging().appDidReceiveMessage(userInfo)
+
+    // ...
+
+    // Print full message.
+    print(userInfo)
+
+    // Change this to your preferred presentation option
+    return [[.alert, .sound]]
+  }
+
+  func userNotificationCenter(_ center: UNUserNotificationCenter,
+                              didReceive response: UNNotificationResponse) async {
+    let userInfo = response.notification.request.content.userInfo
+
+    // ...
+
+    // With swizzling disabled you must let Messaging know about the message, for Analytics
+    // Messaging.messaging().appDidReceiveMessage(userInfo)
+
+    // Print full message.
+    print(userInfo)
   }
 }
