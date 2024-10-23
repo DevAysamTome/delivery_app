@@ -58,7 +58,7 @@ class AuthController {
               int attempts = 0;
 
               while (token == null && attempts < maxAttempts) {
-                token = await _firebaseMessaging.getAPNSToken();
+                token = await _firebaseMessaging.getToken();
                 if (token == null) {
                   print("APNs token not available, retrying...");
                   attempts++;
