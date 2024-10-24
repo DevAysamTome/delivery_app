@@ -1,4 +1,6 @@
 import 'package:delivery_app/views/login_views/login_view.dart';
+import 'package:delivery_app/views/profile/change_password.dart';
+import 'package:delivery_app/views/profile/help_support.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -16,56 +18,20 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          _buildProfileSection(),
-          _buildGeneralSettingsSection(),
-          _buildHelpSection(),
+          _buildGeneralSettingsSection(context),
+          _buildHelpSection(context),
           _buildLogoutButton(context),
         ],
       ),
     );
   }
 
-  Widget _buildProfileSection() {
-    return Card(
-      elevation: 4.0,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: ListTile(
-        leading: const Icon(Icons.person, color: Colors.redAccent),
-        title: const Text('حساب المستخدم'),
-        subtitle: const Text('تعديل معلومات الحساب'),
-        trailing: const Icon(Icons.arrow_forward_ios),
-        onTap: () {
-          // Navigate to user profile screen
-        },
-      ),
-    );
-  }
-
-  Widget _buildGeneralSettingsSection() {
+  Widget _buildGeneralSettingsSection(BuildContext context) {
     return Card(
       elevation: 4.0,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
         children: [
-          ListTile(
-            leading: const Icon(Icons.language, color: Colors.redAccent),
-            title: const Text('اللغة'),
-            subtitle: const Text('تغيير لغة التطبيق'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              // Navigate to language settings screen
-            },
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.notifications, color: Colors.redAccent),
-            title: const Text('الإشعارات'),
-            subtitle: const Text('إعدادات الإشعارات'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              // Navigate to notifications settings screen
-            },
-          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.security, color: Colors.redAccent),
@@ -73,7 +39,10 @@ class SettingsScreen extends StatelessWidget {
             subtitle: const Text('تغيير كلمة المرور'),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
-              // Navigate to security settings screen
+              // Navigate to ChangePasswordScreen
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => ChangePasswordScreen()),
+              );
             },
           ),
         ],
@@ -81,19 +50,23 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHelpSection() {
+  Widget _buildHelpSection(BuildContext context) {
     return Card(
       elevation: 4.0,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       child: ListTile(
-        leading: const Icon(Icons.help, color: Colors.redAccent),
-        title: const Text('مساعدة'),
-        subtitle: const Text('مركز الدعم والمساعدة'),
-        trailing: const Icon(Icons.arrow_forward_ios),
-        onTap: () {
-          // Navigate to help screen
-        },
-      ),
+  leading: const Icon(Icons.help, color: Colors.redAccent),
+  title: const Text('مساعدة'),
+  subtitle: const Text('مركز الدعم والمساعدة'),
+  trailing: const Icon(Icons.arrow_forward_ios),
+  onTap: () {
+    // Navigate to HelpScreen
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => HelpScreen()),
+    );
+  },
+),
+
     );
   }
 

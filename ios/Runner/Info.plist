@@ -27,13 +27,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>We need your location to provide delivery services even when the app is in the background.</string>
+	<string>Your location is used to provide real-time delivery tracking, ensuring accurate pickup and delivery updates even when the app is in the background.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>We need your location for accurate tracking and updates.</string>
+	<string>We use your location for ongoing tracking to improve delivery accuracy and provide timely updates during your order's journey.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>We need your location to provide better service.</string>
+	<string>Your location is used to find nearby delivery services and provide accurate ETAs while you use the app.</string>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>This identifier will be used to deliver personalized ads to you.</string>
+	<string>We use your device identifier to deliver personalized ads based on your preferences and activity, enhancing your experience with relevant promotions.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -83,8 +82,16 @@ class AuthController {
 
             print("Token used for push notifications: $token");
 
+            // التحقق من إذن الموقع وتحديثه
             await _checkLocationPermission(context);
             await _updateLocation(user.uid);
+
+            // إذا فشل الحصول على الموقع، إظهار رسالة توضيحية
+            if (!await _locationEnabled()) {
+              _showLocationError(context);
+              return null;
+            }
+
             _startLocationUpdates(user.uid);
 
             // Store FCM or APNs token in Firestore
@@ -156,6 +163,20 @@ class AuthController {
     }, SetOptions(merge: true));
   }
 
+  Future<bool> _locationEnabled() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    return serviceEnabled;
+  }
+
+  void _showLocationError(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'خدمات الموقع معطلة. لا يمكن إكمال تسجيل الدخول بدون تفعيل الموقع.'),
+      ),
+    );
+  }
+
   void _startLocationUpdates(String uid) {
     Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
@@ -167,42 +188,5 @@ class AuthController {
         'longitude': position.longitude,
       }, SetOptions(merge: true));
     });
-  }
-
-  Future<User?> signUp(String email, String password) async {
-    try {
-      UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      User? user = userCredential.user;
-
-      if (user != null) {
-        // تسجيل تفاصيل المستخدم في Firestore
-        await _firestore.collection('users').doc(user.uid).set({
-          'email': email,
-          'role': 'delivery',
-        });
-
-        // الحصول على رمز FCM وتخزينه
-        final String? token = await _firebaseMessaging.getToken();
-
-        if (token != null) {
-          await _firestore.collection('deliveryWorkers').doc(user.uid).set({
-            'fcmToken': token,
-          }, SetOptions(merge: true));
-        }
-      }
-
-      return user;
-    } catch (e) {
-      print(e);
-      return null;
-    }
-  }
-
-  Future<void> signOut() async {
-    await _auth.signOut();
   }
 }
