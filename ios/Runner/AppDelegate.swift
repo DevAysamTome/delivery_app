@@ -6,7 +6,7 @@ import FirebaseMessaging
 import UserNotifications
 
 @UIApplicationMain
-@objc class AppDelegate: FlutterAppDelegate, MessagingDelegate, CLLocationManagerDelegate, UNUserNotificationCenterDelegate {
+@objc class AppDelegate: FlutterAppDelegate, MessagingDelegate, CLLocationManagerDelegate {
 
   var locationManager: CLLocationManager?
 
@@ -20,15 +20,16 @@ import UserNotifications
 
     // Set UNUserNotificationCenter delegate (without re-declaring it in class conformance)
     if #available(iOS 10.0, *) {
-      UNUserNotificationCenter.current().delegate = self
+      
+  UNUserNotificationCenter.current().delegate = self
 
-      let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-      UNUserNotificationCenter.current().requestAuthorization(
-        options: authOptions,
-        completionHandler: { _, _ in }
-      )
+  let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+  UNUserNotificationCenter.current().requestAuthorization(
+  options: authOptions,
+  completionHandler: { _, _ in }
+  )
 
-      application.registerForRemoteNotifications()
+  application.registerForRemoteNotifications()
     } else {
       let settings: UIUserNotificationSettings =
         UIUserNotificationSettings(types: [.alert, .badge, .sound], categories: nil)
@@ -70,24 +71,14 @@ import UserNotifications
 
   // UNUserNotificationCenter delegate method to handle notifications in foreground
   @available(iOS 10.0, *)
-  override func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-    let userInfo = notification.request.content.userInfo
-
-    // Print full message.
-    print(userInfo)
-
+    override func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
     // Show notification while the app is in the foreground
     completionHandler([.alert, .badge, .sound])
   }
 
   // UNUserNotificationCenter delegate method to handle notification response when tapped
   @available(iOS 10.0, *)
-  override func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-    let userInfo = response.notification.request.content.userInfo
-
-    // Print full message.
-    print(userInfo)
-
+    override func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
     completionHandler()
   }
 
