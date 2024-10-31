@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class OrderController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -103,17 +104,25 @@ class OrderController {
           // Get the data from the document
           Map<String, dynamic> storeOrderData =
               storeOrderDoc.data() as Map<String, dynamic>;
+          final orderLocationData = storeOrderData['deliveryDetails']
+                  ?['location'] as Map<String, dynamic>? ??
+              {};
+          final orderLatitude = orderLocationData['latitude'] as double?;
+          final orderLongitude = orderLocationData['longitude'] as double?;
+          final orderLocation = orderLatitude != null && orderLongitude != null
+              ? LatLng(orderLatitude, orderLongitude)
+              : const LatLng(0.0, 0.0);
 
           // Store the accepted order in a new collection
           await _firestore.collection('accepted_orders').doc(orderId).set({
             'orderId': orderId, // Order ID comes from the parent document
             'userId': storeOrderData['userId'],
-            'address': storeOrderData['placeName'],
+            'address': storeOrderData['address'],
             'items': storeOrderData['items'],
             'orderStatus': 'تم اخذ الطلب',
             'totalPrice': storeOrderData['totalPrice'],
             'acceptedAt': Timestamp.now(),
-            'deliveryLocation': storeOrderData['userLocation'],
+            'deliveryLocation': orderLocation,
           });
 
           // Update the order status in the original collection
