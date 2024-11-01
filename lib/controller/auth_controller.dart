@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -31,6 +32,8 @@ class AuthController {
 
           print("User role: ${userData['role']}");
           if (userData['role'] == 'delivery') {
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString('deliveryWorkerId', user.uid);
             String? token;
 
             // For iOS, fetch the APNs token repeatedly until it's available
@@ -50,7 +53,7 @@ class AuthController {
                 print(
                     'User declined or has not accepted notification permission');
               }
-              await Future.delayed(Duration(seconds: 5));
+              await Future.delayed(Duration(seconds: 2));
 
               const int maxAttempts = 5;
               const Duration delay = Duration(seconds: 3);

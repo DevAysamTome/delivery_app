@@ -162,7 +162,8 @@ class HomeContent extends StatelessWidget {
                   'العنوان: ${storeOrder['items'][0]['placeName']}',
                   Colors.white,
                   onAccept: () async {
-                    await orderController.acceptOrder(mainOrder['orderId']);
+                    await orderController.acceptOrder(
+                        mainOrder['orderId'], userId);
 
                     Navigator.push(
                       context,

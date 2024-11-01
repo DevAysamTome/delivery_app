@@ -1,13 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OrderController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   Stream<int> getNewOrdersCount() {
     return _firestore
         .collection('orders')
         .where('orderStatus', isEqualTo: 'مكتمل')
         .where('deliveryOption', isEqualTo: 'delivery')
+        .where('assignedTo', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
@@ -16,6 +20,7 @@ class OrderController {
     return _firestore
         .collection('orders')
         .where('orderStatus', isEqualTo: 'جاري التوصيل')
+        .where('assignedTo', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
@@ -88,10 +93,32 @@ class OrderController {
     }
   }
 
+  Future<String?> getDeliveryWorkerId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('deliveryWorkerId');
+  }
+
+  Stream<QuerySnapshot> getAssignedOrders(String deliveryWorkerId) {
+    return _firestore
+        .collection('orders')
+        .where('orderStatus', isEqualTo: 'جاري التوصيل')
+        .where('assignedTo',
+            isEqualTo: deliveryWorkerId) // تصفية حسب معرّف عامل التوصيل
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot> fetchAssignedOrders() async* {
+    String? deliveryWorkerId = await getDeliveryWorkerId();
+    if (deliveryWorkerId != null) {
+      yield* getAssignedOrders(deliveryWorkerId);
+    } else {
+      print('Error: No delivery worker ID found.');
+    }
+  }
+
   // قبول الطلب
-  Future<void> acceptOrder(String orderId) async {
+  Future<void> acceptOrder(String orderId, String deliveryWorkerId) async {
     try {
-      // الحصول على الطلب الحالي من الـ Collection الأصلي
       QuerySnapshot storeOrdersSnapshot = await _firestore
           .collection('orders')
           .doc(orderId)
@@ -99,9 +126,7 @@ class OrderController {
           .get();
 
       if (storeOrdersSnapshot.docs.isNotEmpty) {
-        // Assuming you want to handle all the documents in the 'storeOrders' sub-collection
         for (QueryDocumentSnapshot storeOrderDoc in storeOrdersSnapshot.docs) {
-          // Get the data from the document
           Map<String, dynamic> storeOrderData =
               storeOrderDoc.data() as Map<String, dynamic>;
           final orderLocationData = storeOrderData['deliveryDetails']
@@ -113,9 +138,8 @@ class OrderController {
               ? LatLng(orderLatitude, orderLongitude)
               : const LatLng(0.0, 0.0);
 
-          // Store the accepted order in a new collection
           await _firestore.collection('accepted_orders').doc(orderId).set({
-            'orderId': orderId, // Order ID comes from the parent document
+            'orderId': orderId,
             'userId': storeOrderData['userId'],
             'address': storeOrderData['address'],
             'items': storeOrderData['items'],
@@ -123,13 +147,13 @@ class OrderController {
             'totalPrice': storeOrderData['totalPrice'],
             'acceptedAt': Timestamp.now(),
             'deliveryLocation': orderLocation,
+            'assignedTo': deliveryWorkerId // إضافة معرّف عامل التوصيل هنا
           });
 
-          // Update the order status in the original collection
-          await _firestore
-              .collection('orders')
-              .doc(orderId)
-              .update({'orderStatus': 'جاري التوصيل'});
+          await _firestore.collection('orders').doc(orderId).update({
+            'orderStatus': 'جاري التوصيل',
+            'assignedTo': deliveryWorkerId // تعيين معرّف عامل التوصيل هنا
+          });
         }
       }
     } catch (e) {

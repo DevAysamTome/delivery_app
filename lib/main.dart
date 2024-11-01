@@ -59,7 +59,7 @@ Future<void> requestTrackingPermission() async {
 class MyApp extends StatelessWidget {
   final NotificationHandler notificationHandler;
 
-  MyApp(
+  const MyApp(
       {super.key,
       required this.notificationHandler}); // Constructor to pass handler
 
@@ -68,12 +68,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Delivery App',
       theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Elmassry'),
-      initialRoute: '/home',
+      initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
         '/login': (context) => LoginScreen(),
-        '/home': (context) => HomeScreen(),
-        '/profile': (context) => SettingsScreen(),
+        '/home': (context) => const HomeScreen(),
+        '/profile': (context) => const SettingsScreen(),
       },
       debugShowCheckedModeBanner: false,
     );
