@@ -34,6 +34,8 @@ class AuthController {
           if (userData['role'] == 'delivery') {
             SharedPreferences prefs = await SharedPreferences.getInstance();
             await prefs.setString('deliveryWorkerId', user.uid);
+            await prefs.setBool('isLoggedIn', true); // حفظ حالة تسجيل الدخول
+
             String? token;
 
             // For iOS, fetch the APNs token repeatedly until it's available
@@ -102,6 +104,8 @@ class AuthController {
               'fcmToken': token,
             }, SetOptions(merge: true));
 
+            // توجيه المستخدم إلى الشاشة الرئيسية بعد تسجيل الدخول بنجاح
+            Navigator.pushReplacementNamed(context, '/home');
             return user;
           } else {
             ScaffoldMessenger.of(context).showSnackBar(

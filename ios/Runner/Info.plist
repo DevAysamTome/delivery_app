@@ -33,7 +33,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Your location is used to find nearby delivery services and provide accurate ETAs while you use the app.</string>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>We use your device identifier to deliver personalized ads based on your preferences and activity, enhancing your experience with relevant promotions.</string>
+	<string>We use your device identifier and location to deliver personalized ads based on your preferences and activity, enhancing your experience with relevant promotions.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>
