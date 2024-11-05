@@ -15,6 +15,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  while (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+    await Future.delayed(Duration(milliseconds: 400));
+  }
   await requestTrackingPermission();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
