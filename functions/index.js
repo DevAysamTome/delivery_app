@@ -1,63 +1,67 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const geofire = require('geofire-common'); // استخدم مكتبة GeoFire لحساب المسافات
+const { PubSub } = require('@google-cloud/pubsub');
+
 admin.initializeApp();
+const pubsub = new PubSub();
 
-exports.sendNotificationWhenOrderReady = functions.firestore
-  .document('orders/{orderId}')
+exports.checkStoreOrdersStatus = functions.firestore
+  .document('orders/{orderId}/storeOrders/{storeOrderId}')
   .onUpdate(async (change, context) => {
-    const after = change.after.data();
-    const before = change.before.data();
     const orderId = context.params.orderId;
+    const storeOrderId = context.params.storeOrderId;
 
-    try {
-      // تحقق مما إذا كانت حالة الطلبات الفرعية جميعها مكتملة
-      const orderItemsSnapshot = await admin.firestore().collection('orders').doc(orderId).collection('storeOrders').get();
-      const allItemsCompleted = orderItemsSnapshot.docs.every(doc => doc.data().orderStatus === 'مكتمل');
+    const beforeStatus = change.before.data().orderStatus;
+    const afterStatus = change.after.data().orderStatus;
 
-      if (allItemsCompleted && before.orderStatus !== 'مكتمل' && after.orderStatus !== 'مكتمل') {
-        console.log('All items are completed. Updating main order status to completed.');
-
-        // تحديث حالة الطلب الرئيسي إلى مكتمل
-        await admin.firestore().collection('orders').doc(orderId).update({ orderStatus: 'مكتمل' });
-
-        const customerLocation = { latitude: after.latitude, longitude: after.longitude };
-
-        // الحصول على عمال التوصيل مع معلومات الموقع
-        const deliveryWorkersSnapshot = await admin.firestore().collection('deliveryWorkers').get();
-        const deliveryWorkers = deliveryWorkersSnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id,
-          distance: geofire.distanceBetween(
-            [customerLocation.latitude, customerLocation.longitude],
-            [doc.data().latitude, doc.data().longitude]
-          )
-        }));
-
-        // إيجاد أقرب عامل توصيل
-        const nearestWorker = deliveryWorkers.reduce((prev, curr) => prev.distance < curr.distance ? prev : curr);
-
-        if (!nearestWorker || !nearestWorker.fcmToken) {
-          console.log('No delivery workers found or no tokens available.');
-          return null;
-        }
-
-        const payload = {
-          notification: {
-            title: 'SARIE APP',
-            body: 'لديك طلب جديد بالقرب منك!',
-          },
-        };
-
-        // إرسال إشعار إلى أقرب عامل توصيل
-        const response = await admin.messaging().sendToCondition(nearestWorker.fcmToken, payload);
-        console.log('Successfully sent message to nearest worker:', response);
-        return null;
-      } else {
-        return null;
-      }
-    } catch (error) {
-      console.error('Error processing function:', error);
-      throw new functions.https.HttpsError('unknown', 'An error occurred while processing the function', error);
+    if (beforeStatus === afterStatus) {
+      console.log(`No status change in storeOrder ${storeOrderId}`);
+      return null;
     }
+
+    console.log(`Detected change in storeOrder ${storeOrderId}. Checking all storeOrders...`);
+
+    const orderRef = admin.firestore().collection('orders').doc(orderId);
+    const storeOrdersRef = orderRef.collection('storeOrders');
+
+    const snapshot = await storeOrdersRef.get();
+    if (snapshot.empty) {
+      console.log('No storeOrders found.');
+      return null;
+    }
+
+    const allReady = snapshot.docs.every(doc =>
+      doc.data().orderStatus?.trim() === 'تم تجهيز الطلب'
+    );
+
+    if (!allReady) {
+      console.log('Not all storeOrders are ready.');
+      return null;
+    }
+
+    const orderDoc = await orderRef.get();
+    if (!orderDoc.exists) {
+      console.log(`Order ${orderId} not found.`);
+      return null;
+    }
+
+    const mainOrderStatus = orderDoc.data().orderStatus;
+    if (mainOrderStatus === 'تم تجهيز الطلب') {
+      console.log('Main order already marked as ready.');
+      return null;
+    }
+
+    await orderRef.update({ orderStatus: 'تم تجهيز الطلب' });
+    console.log(`Main order ${orderId} marked as ready.`);
+
+    // Optional: publish to pubsub
+    try {
+      const message = JSON.stringify({ orderId });
+      await pubsub.topic('orderCompleted').publish(Buffer.from(message));
+      console.log('Published to orderCompleted topic:', message);
+    } catch (err) {
+      console.error('PubSub error:', err);
+    }
+
+    return null;
   });

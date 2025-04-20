@@ -1,0 +1,2 @@
+E:/Hard D/VSCODE/Mohammed Khanfar - Delivery App/delivery_app/android/app/.cxx/Debug/3k241p14/x86/CMakeFiles/edit_cache.dir
+E:/Hard D/VSCODE/Mohammed Khanfar - Delivery App/delivery_app/android/app/.cxx/Debug/3k241p14/x86/CMakeFiles/rebuild_cache.dir

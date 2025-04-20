@@ -9,7 +9,7 @@ class OrderController {
   Stream<int> getNewOrdersCount() {
     return _firestore
         .collection('orders')
-        .where('orderStatus', isEqualTo: 'مكتمل')
+        .where('orderStatus', isEqualTo: 'تم تجهيز الطلب')
         .where('deliveryOption', isEqualTo: 'delivery')
         .where('assignedTo', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
         .snapshots()
@@ -36,45 +36,58 @@ class OrderController {
   Stream<QuerySnapshot> getOrders() {
     return _firestore
         .collection('orders')
-        .where('orderStatus', isEqualTo: 'مكتمل')
+        .where('orderStatus', isEqualTo: 'تم تجهيز الطلب')
         .where('deliveryOption', isEqualTo: 'delivery')
         .snapshots();
   }
 
   Stream<Map<String, dynamic>> getOrdersDetailsWithMainFields() async* {
-    // جلب orderId من /order_numbers/current
-    DocumentSnapshot currentSnapshot =
-        await _firestore.collection('order_numbers').doc('current').get();
+    try {
+      // Get all orders that are ready for delivery
+      QuerySnapshot ordersSnapshot = await _firestore
+          .collection('orders')
+          .where('orderStatus', isEqualTo: 'تم تجهيز الطلب')
+          .where('deliveryOption', isEqualTo: 'delivery')
+          .get();
 
-    if (currentSnapshot.exists) {
-      String orderId = currentSnapshot.get('currentNumber').toString();
+      if (ordersSnapshot.docs.isEmpty) {
+        yield {
+          'mainOrder': null,
+          'storeOrders': <Map<String, dynamic>>[],
+        };
+        return;
+      }
 
-      // استرجاع المستند الرئيسي باستخدام orderId
-      DocumentSnapshot orderSnapshot =
-          await _firestore.collection('orders').doc(orderId).get();
-
-      if (orderSnapshot.exists) {
-        // استرجاع جميع المستندات داخل المجموعة الفرعية
-        Stream<QuerySnapshot> storeOrdersSnapshot = _firestore
+      // Process each order
+      for (var orderDoc in ordersSnapshot.docs) {
+        String orderId = orderDoc.id;
+        Map<String, dynamic> mainOrderData = orderDoc.data() as Map<String, dynamic>;
+        
+        // Get store orders for this order
+        QuerySnapshot storeOrdersSnapshot = await _firestore
             .collection('orders')
             .doc(orderId)
             .collection('storeOrders')
-            .where('orderStatus', isEqualTo: 'مكتمل')
-            .snapshots();
+            .where('orderStatus', isEqualTo: 'تم تجهيز الطلب')
+            .get();
 
-        // دمج الحقول من المستند الرئيسي مع الحقول من المستندات الفرعية
-        await for (QuerySnapshot snapshot in storeOrdersSnapshot) {
-          List<Object?> storeOrders =
-              snapshot.docs.map((doc) => doc.data()).toList();
+        if (storeOrdersSnapshot.docs.isNotEmpty) {
+          List<Map<String, dynamic>> storeOrders = storeOrdersSnapshot.docs
+              .map((doc) => doc.data() as Map<String, dynamic>)
+              .toList();
 
           yield {
-            'mainOrder': orderSnapshot.data(), // البيانات من المستند الرئيسي
-            'storeOrders': storeOrders // البيانات من المستندات الفرعية
+            'mainOrder': mainOrderData,
+            'storeOrders': storeOrders,
           };
         }
       }
-    } else {
-      throw Exception('No current order found.');
+    } catch (e) {
+      print('Error fetching orders: $e');
+      yield {
+        'mainOrder': null,
+        'storeOrders': <Map<String, dynamic>>[],
+      };
     }
   }
 
@@ -134,9 +147,6 @@ class OrderController {
               {};
           final orderLatitude = orderLocationData['latitude'] as double?;
           final orderLongitude = orderLocationData['longitude'] as double?;
-          final orderLocation = orderLatitude != null && orderLongitude != null
-              ? LatLng(orderLatitude, orderLongitude)
-              : const LatLng(0.0, 0.0);
 
           await _firestore.collection('accepted_orders').doc(orderId).set({
             'orderId': orderId,
@@ -146,18 +156,56 @@ class OrderController {
             'orderStatus': 'تم اخذ الطلب',
             'totalPrice': storeOrderData['totalPrice'],
             'acceptedAt': Timestamp.now(),
-            'deliveryLocation': orderLocation,
-            'assignedTo': deliveryWorkerId // إضافة معرّف عامل التوصيل هنا
+            'deliveryLocation': {
+              'latitude': orderLatitude ?? 0.0,
+              'longitude': orderLongitude ?? 0.0,
+            },
+            'assignedTo': deliveryWorkerId
           });
 
           await _firestore.collection('orders').doc(orderId).update({
-            'orderStatus': 'جاري التوصيل',
-            'assignedTo': deliveryWorkerId // تعيين معرّف عامل التوصيل هنا
+            'orderStatus': 'تم اخذ الطلب',
+            'assignedTo': deliveryWorkerId
           });
         }
       }
     } catch (e) {
       print('Error accepting order: $e');
+      rethrow; // Rethrow the error to handle it in the UI
+    }
+  }
+
+  // تأكيد استلام الطلب من المطعم
+  Future<void> confirmOrderReceived(String orderId) async {
+    try {
+      await _firestore.collection('orders').doc(orderId).update({
+        'orderStatus': 'عامل التوصيل قد استلم الطلب',
+        'receivedAt': Timestamp.now()
+      });
+
+      // Set a timer to change status to "جاري التوصيل" after 5 minutes
+      Future.delayed(const Duration(minutes: 5), () async {
+        await _firestore.collection('orders').doc(orderId).update({
+          'orderStatus': 'جاري التوصيل',
+          'deliveryStartedAt': Timestamp.now()
+        });
+      });
+    } catch (e) {
+      print('Error confirming order received: $e');
+      rethrow;
+    }
+  }
+
+  // تأكيد اكتمال التوصيل
+  Future<void> completeDelivery(String orderId) async {
+    try {
+      await _firestore.collection('orders').doc(orderId).update({
+        'orderStatus': 'تم التوصيل',
+        'deliveredAt': Timestamp.now()
+      });
+    } catch (e) {
+      print('Error completing delivery: $e');
+      rethrow;
     }
   }
 }

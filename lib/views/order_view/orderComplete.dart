@@ -35,7 +35,7 @@ class _PendingOrdersTabState extends State<PendingOrdersTab> {
     return StreamBuilder(
       stream: FirebaseFirestore.instance
           .collection('orders')
-          .where('orderStatus', isEqualTo: 'مكتمل')
+          .where('orderStatus', isEqualTo: 'تم اخذ الطلب')
           .where('deliveryOption', isEqualTo: 'delivery')
           .where('assignedTo',
               isEqualTo: deliveryWorkerId) // استخدام deliveryWorkerId هنا
