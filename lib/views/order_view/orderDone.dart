@@ -105,7 +105,7 @@ class _CompleteOrderState extends State<CompleteOrder> {
             itemCount: orders.length,
             itemBuilder: (context, index) {
               var order = orders[index].data() as Map<String, dynamic>;
-              var orderDate = (order['orderDate'] as Timestamp).toDate();
+              var orderDate = (order['timestamp'] as Timestamp).toDate();
               var formattedDate = intl.DateFormat('dd/MM/yyyy - HH:mm').format(orderDate);
 
               return Card(

@@ -58,7 +58,7 @@ class _OngoingOrdersTabState extends State<OngoingOrdersTab> {
             .where('orderStatus', isEqualTo: 'جاري التوصيل')
             .where('deliveryOption', isEqualTo: 'delivery')
             .where('assignedTo', isEqualTo: deliveryWorkerId)
-            .orderBy('orderDate', descending: true)
+            .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (snapshot.hasError) {
@@ -106,7 +106,7 @@ class _OngoingOrdersTabState extends State<OngoingOrdersTab> {
             itemCount: orders.length,
             itemBuilder: (context, index) {
               var order = orders[index].data() as Map<String, dynamic>;
-              var orderDate = (order['orderDate'] as Timestamp).toDate();
+              var orderDate = (order['timestamp'] as Timestamp).toDate();
               var formattedDate = intl.DateFormat('dd/MM/yyyy - HH:mm').format(orderDate);
 
               return Card(

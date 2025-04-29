@@ -46,8 +46,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       if (orderDoc.exists) {
         setState(() {
           final orderStatus = orderDoc['orderStatus'] as String? ?? '';
-          isOrderAccepted = orderStatus == 'جاري التوصيل';
-          isOrderReceived = orderStatus == 'تم استلام الطلب';
+          isOrderAccepted = orderStatus == 'تم التوصيل';
+          isOrderReceived = orderStatus == 'تم التوصيل';
         });
       }
     } catch (e) {
@@ -87,29 +87,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     }
   }
 
-  void markOrderAsDelivered() async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('orders')
-          .doc(widget.orderId)
-          .update({'orderStatus': 'تم التوصيل'});
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تحديث حالة الطلب إلى تم التوصيل')),
-      );
-      Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('حدث خطأ أثناء تحديث حالة الطلب')),
-      );
-    }
-  }
-
   void acceptOrder() async {
     try {
-      await orderController.acceptOrder(widget.orderId, widget.userId);
+      await orderController.completeDelivery(widget.orderId);
       
       setState(() {
         isOrderAccepted = true;
+        isOrderReceived = true;
       });
       
       // Call the onAccept callback if provided
@@ -118,31 +102,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       }
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم قبول الطلب')),
+        const SnackBar(content: Text('تم تحديث حالة الطلب إلى تم التوصيل')),
       );
       Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('حدث خطأ أثناء قبول الطلب')),
-      );
-    }
-  }
-
-  void confirmOrderReceived() async {
-    try {
-      await orderController.confirmOrderReceived(widget.orderId);
-      
-      setState(() {
-        isOrderReceived = true;
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تأكيد استلام الطلب من المطعم')),
-      );
-      Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('حدث خطأ أثناء تأكيد استلام الطلب')),
+        const SnackBar(content: Text('حدث خطأ أثناء تحديث حالة الطلب')),
       );
     }
   }
@@ -211,224 +176,186 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     final customerName =
                         nameSnapshot.data ?? 'Unknown Customer';
 
-                    return SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Card(
-                              elevation: 4,
-                              margin: const EdgeInsets.symmetric(vertical: 10),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'اسم العميل: $customerName',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'العنوان: ${deliveryDetails?['address'] ?? 'غير متوفر'}',
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'تكلفة التوصيل: ${deliveryDetails?['cost'] ?? 0} شيكل',
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'التكلفة الإجمالية: ${firstStoreOrder['totalPrice'] ?? 0} شيكل',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.redAccent,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'تفاصيل الطلب:',
-                              style: Theme.of(context).textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: 10),
-                            Card(
-                              elevation: 4,
-                              margin: const EdgeInsets.symmetric(vertical: 10),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: items.map((item) {
-                                    // No need to access item[0] since item is already the map
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 8.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            '${item['mealName']} (${item['quantity']})',
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          Text('سعر: ${item['mealPrice']}'),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'موقع التوصيل:',
-                              style: Theme.of(context).textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              height: 300,
-                              child: Card(
-                                elevation: 4,
-                                child: currentLocation == null
-                                    ? const Center(child: CircularProgressIndicator())
-                                    : GoogleMap(
-                                        initialCameraPosition: CameraPosition(
-                                          target: LatLng(
-                                            currentLocation!.latitude!,
-                                            currentLocation!.longitude!,
-                                          ),
-                                          zoom: 15.0,
-                                        ),
-                                        markers: {
-                                          Marker(
-                                            markerId:
-                                                const MarkerId('currentLocation'),
-                                            position: LatLng(
-                                              currentLocation!.latitude!,
-                                              currentLocation!.longitude!,
-                                            ),
-                                            infoWindow: const InfoWindow(
-                                                title: 'موقعي الحالي'),
-                                          ),
-                                          Marker(
-                                            markerId: const MarkerId('destination'),
-                                            position: destination,
-                                            infoWindow: const InfoWindow(
-                                                title: 'موقع التوصيل'),
-                                          ),
-                                        },
-                                        polylines: {
-                                          Polyline(
-                                            polylineId: const PolylineId('route'),
-                                            points: polylineCoordinates,
-                                            color: Colors.blue,
-                                            width: 5,
-                                          ),
-                                        },
-                                        myLocationEnabled: true,
-                                        onMapCreated:
-                                            (GoogleMapController controller) {
-                                          mapController = controller;
-                                        },
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    return FutureBuilder<String>(
+                      future: orderController.getCustomerPhone(widget.userId),
+                      builder: (context, phoneSnapshot) {
+                        if (phoneSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+
+                        final customerPhone = phoneSnapshot.data ?? 'غير متوفر';
+
+                        return SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    // Show order details in a dialog or bottom sheet
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: const Text('تفاصيل الطلب'),
-                                        content: SingleChildScrollView(
+                                Card(
+                                  elevation: 4,
+                                  margin: const EdgeInsets.symmetric(vertical: 10),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'اسم العميل: $customerName',
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'رقم الهاتف: $customerPhone',
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'العنوان: ${deliveryDetails?['address'] ?? 'غير متوفر'}',
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'تكلفة التوصيل: ${deliveryDetails?['cost'] ?? 0} شيكل',
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'التكلفة الإجمالية: ${firstStoreOrder['totalPrice'] + deliveryDetails?['cost'] ?? 0} شيكل',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.redAccent,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'تفاصيل الطلب:',
+                                  style: Theme.of(context).textTheme.headlineSmall,
+                                ),
+                                const SizedBox(height: 10),
+                                Card(
+                                  elevation: 4,
+                                  margin: const EdgeInsets.symmetric(vertical: 10),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: items.map((item) {
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 8.0),
                                           child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              Text('اسم العميل: $customerName'),
-                                              const SizedBox(height: 8),
-                                              Text('العنوان: ${deliveryDetails?['address'] ?? 'غير متوفر'}'),
-                                              const SizedBox(height: 8),
-                                              Text('تكلفة التوصيل: ${deliveryDetails?['cost'] ?? 0} شيكل'),
-                                              const SizedBox(height: 8),
-                                              Text('التكلفة الإجمالية: ${firstStoreOrder['totalPrice'] ?? 0} شيكل'),
-                                              const SizedBox(height: 16),
-                                              const Text('الطلبات:'),
-                                              ...items.map((item) => Padding(
-                                                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                                child: Text('${item['mealName']} (${item['quantity']})'),
-                                              )).toList(),
+                                              Text(
+                                                '${item['mealName']} (${item['quantity']})',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Text('سعر: ${item['mealPrice']}'),
                                             ],
                                           ),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(context),
-                                            child: const Text('إغلاق'),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.info_outline),
-                                  label: const Text('عرض التفاصيل'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue,
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                        );
+                                      }).toList(),
+                                    ),
                                   ),
                                 ),
-                                if (!isOrderAccepted)
-                                  ElevatedButton.icon(
-                                    onPressed: acceptOrder,
-                                    icon: const Icon(Icons.check_circle_outline),
-                                    label: const Text('قبول الطلب'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                    ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'موقع التوصيل:',
+                                  style: Theme.of(context).textTheme.headlineSmall,
+                                ),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  height: 300,
+                                  child: Card(
+                                    elevation: 4,
+                                    child: currentLocation == null
+                                        ? const Center(child: CircularProgressIndicator())
+                                        : GoogleMap(
+                                            initialCameraPosition: CameraPosition(
+                                              target: LatLng(
+                                                currentLocation!.latitude!,
+                                                currentLocation!.longitude!,
+                                              ),
+                                              zoom: 15.0,
+                                            ),
+                                            markers: {
+                                              Marker(
+                                                markerId:
+                                                    const MarkerId('currentLocation'),
+                                                position: LatLng(
+                                                  currentLocation!.latitude!,
+                                                  currentLocation!.longitude!,
+                                                ),
+                                                infoWindow: const InfoWindow(
+                                                    title: 'موقعي الحالي'),
+                                              ),
+                                              Marker(
+                                                markerId: const MarkerId('destination'),
+                                                position: destination,
+                                                infoWindow: const InfoWindow(
+                                                    title: 'موقع التوصيل'),
+                                              ),
+                                            },
+                                            polylines: {
+                                              Polyline(
+                                                polylineId: const PolylineId('route'),
+                                                points: polylineCoordinates,
+                                                color: Colors.blue,
+                                                width: 5,
+                                              ),
+                                            },
+                                            myLocationEnabled: true,
+                                            onMapCreated:
+                                                (GoogleMapController controller) {
+                                              mapController = controller;
+                                            },
+                                          ),
                                   ),
-                                if (isOrderAccepted && !isOrderReceived)
-                                  ElevatedButton.icon(
-                                    onPressed: confirmOrderReceived,
-                                    icon: const Icon(Icons.shopping_bag),
-                                    label: const Text('تم استلام الطلب'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange,
-                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                    ),
-                                  ),
-                                if (isOrderReceived)
-                                  ElevatedButton.icon(
-                                    onPressed: markOrderAsDelivered,
-                                    icon: const Icon(Icons.local_shipping),
-                                    label: const Text('تم التوصيل'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.redAccent,
-                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                    ),
-                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    if (!isOrderAccepted)
+                                      ElevatedButton.icon(
+                                        onPressed: acceptOrder,
+                                        icon: const Icon(Icons.check_circle_outline),
+                                        label: const Text('تم التوصيل'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green,
+                                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                        ),
+                                      ),
+                                    if (isOrderAccepted)
+                                      ElevatedButton.icon(
+                                        onPressed: null,
+                                        icon: const Icon(Icons.check_circle),
+                                        label: const Text('تم التوصيل'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.grey,
+                                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );

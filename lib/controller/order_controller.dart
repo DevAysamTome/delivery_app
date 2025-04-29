@@ -9,14 +9,22 @@ class OrderController {
   Stream<int> getNewOrdersCount() {
     return _firestore
         .collection('orders')
-        .where('orderStatus', isEqualTo: 'تم تجهيز الطلب')
+        .where('orderStatus', whereIn: ['تم تجهيز الطلب', 'قيد الانتظار'])
         .where('deliveryOption', isEqualTo: 'delivery')
         .where('assignedTo', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
 
-  Stream<int> getInProgressOrdersCount() {
+  Stream<int> getNewInProgressOrdersCount() {
+    return _firestore
+        .collection('orders')
+        .where('orderStatus', whereIn: ['تم تجهيز الطلب', 'قيد الانتظار'])
+        .where('assignedTo', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+  Stream<int> getOnGoingInProgressOrdersCount() {
     return _firestore
         .collection('orders')
         .where('orderStatus', isEqualTo: 'جاري التوصيل')
@@ -28,25 +36,36 @@ class OrderController {
   Stream<QuerySnapshot> getOrdersByStatus(String status) {
     return _firestore
         .collection('orders')
-        .where('orderStatus', isEqualTo: status)
+        .where('orderStatus', whereIn: [status, 'قيد الانتظار'])
         .where('deliveryOption', isEqualTo: 'delivery')
+        .where('assignedTo', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
         .snapshots();
   }
 
   Stream<QuerySnapshot> getOrders() {
     return _firestore
         .collection('orders')
-        .where('orderStatus', isEqualTo: 'تم تجهيز الطلب')
+        .where('orderStatus', whereIn: ['تم تجهيز الطلب', 'قيد الانتظار'])
         .where('deliveryOption', isEqualTo: 'delivery')
+        .where('assignedTo', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
         .snapshots();
   }
 
   Stream<Map<String, dynamic>> getOrdersDetailsWithMainFields() async* {
     try {
-      // Get all orders that are ready for delivery
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUserId == null) {
+        yield {
+          'mainOrder': null,
+          'storeOrders': <Map<String, dynamic>>[],
+        };
+        return;
+      }
+
+      // Get all orders that are ready for delivery or pending
       QuerySnapshot ordersSnapshot = await _firestore
           .collection('orders')
-          .where('orderStatus', isEqualTo: 'تم تجهيز الطلب')
+          .where('orderStatus', whereIn: ['تم تجهيز الطلب', 'قيد الانتظار', 'تم اخذ الطلب', 'عامل التوصيل قد استلم الطلب'])
           .where('deliveryOption', isEqualTo: 'delivery')
           .get();
 
@@ -63,23 +82,32 @@ class OrderController {
         String orderId = orderDoc.id;
         Map<String, dynamic> mainOrderData = orderDoc.data() as Map<String, dynamic>;
         
-        // Get store orders for this order
-        QuerySnapshot storeOrdersSnapshot = await _firestore
-            .collection('orders')
-            .doc(orderId)
-            .collection('storeOrders')
-            .where('orderStatus', isEqualTo: 'تم تجهيز الطلب')
-            .get();
+        // Check if this order is assigned to the current delivery worker
+        String? assignedTo = mainOrderData['assignedTo'] as String?;
+        bool isAssignedToMe = assignedTo == currentUserId;
+        
+        // Only process orders that are either:
+        // 1. Not assigned to anyone (normal mode)
+        // 2. Assigned to this delivery worker (admin mode)
+        if (assignedTo == null || isAssignedToMe) {
+          // Get store orders for this order
+          QuerySnapshot storeOrdersSnapshot = await _firestore
+              .collection('orders')
+              .doc(orderId)
+              .collection('storeOrders')
+              .where('orderStatus', whereIn: ['تم تجهيز الطلب', 'قيد الانتظار'])
+              .get();
 
-        if (storeOrdersSnapshot.docs.isNotEmpty) {
-          List<Map<String, dynamic>> storeOrders = storeOrdersSnapshot.docs
-              .map((doc) => doc.data() as Map<String, dynamic>)
-              .toList();
+          if (storeOrdersSnapshot.docs.isNotEmpty) {
+            List<Map<String, dynamic>> storeOrders = storeOrdersSnapshot.docs
+                .map((doc) => doc.data() as Map<String, dynamic>)
+                .toList();
 
-          yield {
-            'mainOrder': mainOrderData,
-            'storeOrders': storeOrders,
-          };
+            yield {
+              'mainOrder': mainOrderData,
+              'storeOrders': storeOrders,
+            };
+          }
         }
       }
     } catch (e) {
@@ -103,6 +131,21 @@ class OrderController {
     } catch (e) {
       print('Error fetching customer name: $e');
       return 'Unknown';
+    }
+  }
+
+  Future<String> getCustomerPhone(String userId) async {
+    try {
+      DocumentSnapshot userSnapshot =
+          await _firestore.collection('users').doc(userId).get();
+      if (userSnapshot.exists) {
+        return userSnapshot['phoneNumber'] ?? 'غير متوفر';
+      } else {
+        return 'غير متوفر';
+      }
+    } catch (e) {
+      print('Error fetching customer phone: $e');
+      return 'غير متوفر';
     }
   }
 
@@ -174,6 +217,7 @@ class OrderController {
       rethrow; // Rethrow the error to handle it in the UI
     }
   }
+
 
   // تأكيد استلام الطلب من المطعم
   Future<void> confirmOrderReceived(String orderId) async {

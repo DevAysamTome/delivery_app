@@ -1,0 +1,2 @@
+D:/Mohammed Khanfar - Delivery App/delivery_app/android/app/.cxx/Debug/1l1f3922/x86/CMakeFiles/edit_cache.dir
+D:/Mohammed Khanfar - Delivery App/delivery_app/android/app/.cxx/Debug/1l1f3922/x86/CMakeFiles/rebuild_cache.dir

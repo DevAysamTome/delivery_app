@@ -2,8 +2,10 @@ import 'package:delivery_app/controller/order_controller.dart';
 import 'package:delivery_app/controller/delivery_person_controller.dart';
 import 'package:delivery_app/models/delivery_person.dart';
 import 'package:delivery_app/views/order_details/order_details_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
@@ -15,6 +17,13 @@ class HomeContent extends StatefulWidget {
 class _HomeContentState extends State<HomeContent> {
   final OrderController _orderController = OrderController();
   final DeliveryPersonController _deliveryPersonController = DeliveryPersonController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -68,16 +77,46 @@ class _HomeContentState extends State<HomeContent> {
         // Statistics Section
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          child: Column(
             children: [
-              Expanded(
-                child: _buildStatisticCard(
-                    'الطلبات الجديدة', _orderController.getNewOrdersCount()),
-              ),
-              Expanded(
-                child: _buildStatisticCard('الطلبات الجارية',
-                    _orderController.getInProgressOrdersCount()),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                    child: StreamBuilder<int>(
+                      stream: _orderController.getNewInProgressOrdersCount(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return _buildCard('الطلبات الجديدة', 'جاري التحميل...');
+                        } else if (snapshot.hasError) {
+                          print('Error in new orders stream: ${snapshot.error}');
+                          return _buildCard('الطلبات الجديدة', 'خطأ');
+                        } else if (!snapshot.hasData) {
+                          return _buildCard('الطلبات الجديدة', '0');
+                        } else {
+                          return _buildCard('الطلبات الجديدة', snapshot.data.toString());
+                        }
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: StreamBuilder<int>(
+                      stream: _orderController.getOnGoingInProgressOrdersCount(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return _buildCard('الطلبات قيد التوصيل', 'جاري التحميل...');
+                        } else if (snapshot.hasError) {
+                          print('Error in ongoing orders stream: ${snapshot.error}');
+                          return _buildCard('الطلبات قيد التوصيل', 'خطأ');
+                        } else if (!snapshot.hasData) {
+                          return _buildCard('الطلبات قيد التوصيل', '0');
+                        } else {
+                          return _buildCard('الطلبات قيد التوصيل', snapshot.data.toString());
+                        }
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -101,23 +140,6 @@ class _HomeContentState extends State<HomeContent> {
           child: _buildOrdersList(),
         ),
       ],
-    );
-  }
-
-  Widget _buildStatisticCard(String title, Stream<int> countStream) {
-    return StreamBuilder<int>(
-      stream: countStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildCard(title, 'جاري التحميل...');
-        } else if (snapshot.hasError) {
-          return _buildCard(title, 'خطأ');
-        } else if (!snapshot.hasData) {
-          return _buildCard(title, '0');
-        } else {
-          return _buildCard(title, snapshot.data.toString());
-        }
-      },
     );
   }
 
@@ -263,6 +285,10 @@ class _HomeContentState extends State<HomeContent> {
         final bool isInDelivery = orderStatus == 'جاري التوصيل';
         final bool isDelivered = orderStatus == 'تم التوصيل';
         
+        // Check if order is assigned by admin
+        final String? assignedTo = snapshot.data?.get('assignedTo') as String?;
+        final bool isAssignedByAdmin = assignedTo != null && assignedTo == _auth.currentUser?.uid;
+        
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
           elevation: 4.0,
@@ -286,6 +312,17 @@ class _HomeContentState extends State<HomeContent> {
                   address,
                   style: const TextStyle(fontSize: 16),
                 ),
+                if (isAssignedByAdmin && orderStatus == 'تم تجهيز الطلب')
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      'تم تعيين هذا الطلب لك من قبل الإدارة',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -312,7 +349,9 @@ class _HomeContentState extends State<HomeContent> {
                     ),
                     if (!isAccepted && !isReceived && !isInDelivery && !isDelivered && onAccept != null)
                       ElevatedButton.icon(
-                        onPressed: onAccept,
+                        onPressed: () {
+                          _orderController.acceptOrder(orderId, _auth.currentUser!.uid);
+                        },
                         icon: const Icon(Icons.check_circle_outline),
                         label: const Text('قبول الطلب'),
                         style: ElevatedButton.styleFrom(
