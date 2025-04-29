@@ -1,0 +1,2 @@
+D:/Mohammed Khanfar - Delivery App/delivery_app/android/app/.cxx/RelWithDebInfo/2a4p7266/arm64-v8a/CMakeFiles/edit_cache.dir
+D:/Mohammed Khanfar - Delivery App/delivery_app/android/app/.cxx/RelWithDebInfo/2a4p7266/arm64-v8a/CMakeFiles/rebuild_cache.dir
