@@ -286,8 +286,11 @@ class _HomeContentState extends State<HomeContent> {
         final bool isDelivered = orderStatus == 'تم التوصيل';
         
         // Check if order is assigned by admin
-        final String? assignedTo = snapshot.data?.get('assignedTo') as String?;
-        final bool isAssignedByAdmin = assignedTo != null && assignedTo == _auth.currentUser?.uid;
+        final bool isAssignedByAdmin = snapshot.hasData && 
+            snapshot.data!.exists && 
+            snapshot.data!.data() != null && 
+            (snapshot.data!.data() as Map<String, dynamic>).containsKey('assignedTo') &&
+            snapshot.data!.get('assignedTo') == _auth.currentUser?.uid;
         
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
