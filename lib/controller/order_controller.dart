@@ -56,8 +56,7 @@ class OrderController {
       final currentUserId = FirebaseAuth.instance.currentUser?.uid;
       if (currentUserId == null) {
         yield {
-          'mainOrder': null,
-          'storeOrders': <Map<String, dynamic>>[],
+          'mainOrders': <Map<String, dynamic>>[],
         };
         return;
       }
@@ -71,11 +70,12 @@ class OrderController {
 
       if (ordersSnapshot.docs.isEmpty) {
         yield {
-          'mainOrder': null,
-          'storeOrders': <Map<String, dynamic>>[],
+          'mainOrders': <Map<String, dynamic>>[],
         };
         return;
       }
+
+      List<Map<String, dynamic>> allOrders = [];
 
       // Process each order
       for (var orderDoc in ordersSnapshot.docs) {
@@ -103,34 +103,41 @@ class OrderController {
                 .map((doc) => doc.data() as Map<String, dynamic>)
                 .toList();
 
-            yield {
+            allOrders.add({
               'mainOrder': mainOrderData,
               'storeOrders': storeOrders,
-            };
+            });
           }
         }
       }
+
+      yield {
+        'mainOrders': allOrders,
+      };
     } catch (e) {
       print('Error fetching orders: $e');
       yield {
-        'mainOrder': null,
-        'storeOrders': <Map<String, dynamic>>[],
+        'mainOrders': <Map<String, dynamic>>[],
       };
     }
   }
 
   Future<String> getCustomerName(String userId) async {
     try {
+      if (userId.isEmpty) {
+        return 'غير معروف';
+      }
+      
       DocumentSnapshot userSnapshot =
           await _firestore.collection('users').doc(userId).get();
       if (userSnapshot.exists) {
-        return userSnapshot['fullName'] ?? 'Unknown';
+        return userSnapshot['fullName'] as String? ?? 'غير معروف';
       } else {
-        return 'Unknown';
+        return 'غير معروف';
       }
     } catch (e) {
       print('Error fetching customer name: $e');
-      return 'Unknown';
+      return 'غير معروف';
     }
   }
 

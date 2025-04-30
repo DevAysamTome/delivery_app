@@ -192,8 +192,8 @@ class _HomeContentState extends State<HomeContent> {
 
         if (!snapshot.hasData || 
             snapshot.data == null || 
-            snapshot.data!['mainOrder'] == null || 
-            (snapshot.data!['storeOrders'] as List<Map<String, dynamic>>).isEmpty) {
+            snapshot.data!['mainOrders'] == null || 
+            (snapshot.data!['mainOrders'] as List<Map<String, dynamic>>).isEmpty) {
           return const Center(
             child: Text(
               'لا توجد طلبات متاحة حالياً',
@@ -202,62 +202,75 @@ class _HomeContentState extends State<HomeContent> {
           );
         }
 
-        final mainOrder = snapshot.data!['mainOrder'] as Map<String, dynamic>;
-        final storeOrders = snapshot.data!['storeOrders'] as List<Map<String, dynamic>>;
+        final allOrders = snapshot.data!['mainOrders'] as List<Map<String, dynamic>>;
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(8.0),
-          itemCount: storeOrders.length,
-          itemBuilder: (context, index) {
-            final storeOrder = storeOrders[index];
-            final userId = mainOrder['userId'] as String? ?? '';
-            final deliveryDetails = storeOrder['deliveryDetails'] as Map<String, dynamic>?;
-            final address = deliveryDetails?['address'] as String? ?? 'غير متوفر';
-            final deliveryCost = deliveryDetails?['cost'] as num? ?? 0;
-            final location = deliveryDetails?['location'] as Map<String, dynamic>?;
-            final time = deliveryDetails?['time'] as num? ?? 0;
-            final totalPrice = storeOrder['totalPrice'] as num? ?? 0;
-            final orderCost = totalPrice ;
-            final totalCost = totalPrice + deliveryCost;
-            return FutureBuilder<String>(
-              future: _orderController.getCustomerName(userId),
-              builder: (context, userSnapshot) {
-                if (userSnapshot.connectionState == ConnectionState.waiting) {
-                  return _buildOrderCard(
-                    'جاري التحميل...',
-                    'العنوان: $address\nتكلفة التوصيل: $deliveryCost شيكل\nتكلفة الطلب: $orderCost شيكل\nالتكلفة الإجمالية: $totalCost شيكل\nالوقت المتوقع: $time دقيقة',
-                    Colors.grey,
-                    orderId: mainOrder['orderId'] as String,
-                    userId: userId,
-                  );
-                }
-
-                if (userSnapshot.hasError || !userSnapshot.hasData) {
-                  return _buildOrderCard(
-                    'خطأ في جلب اسم العميل',
-                    'العنوان: $address\nتكلفة التوصيل: $deliveryCost شيكل\nتكلفة الطلب: $orderCost شيكل\nالتكلفة الإجمالية: $totalCost شيكل\nالوقت المتوقع: $time دقيقة',
-                    Colors.redAccent,
-                    orderId: mainOrder['orderId'] as String,
-                    userId: userId,
-                  );
-                }
-
-                final customerName = userSnapshot.data ?? 'غير معروف';
-
-                return _buildOrderCard(
-                  customerName,
-                  'العنوان: $address\nتكلفة التوصيل: $deliveryCost شيكل\nتكلفة الطلب: $orderCost شيكل\nالتكلفة الإجمالية: $totalCost شيكل\nالوقت المتوقع: $time دقيقة',
-                  Colors.white,
-                  orderId: mainOrder['orderId'] as String,
-                  userId: userId,
-                  onAccept: () async {
-                    await _orderController.acceptOrder(
-                        mainOrder['orderId'] as String, userId);
-                  },
-                );
-              },
-            );
+        return RefreshIndicator(
+          onRefresh: () async {
+            // Force a refresh by triggering a rebuild
+            setState(() {});
           },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(8.0),
+            itemCount: allOrders.length,
+            itemBuilder: (context, index) {
+              final orderData = allOrders[index];
+              final mainOrder = orderData['mainOrder'] as Map<String, dynamic>;
+              final storeOrders = orderData['storeOrders'] as List<Map<String, dynamic>>;
+              
+              return Column(
+                children: storeOrders.map((storeOrder) {
+                  final userId = mainOrder['userId'] as String? ?? '';
+                  final deliveryDetails = storeOrder['deliveryDetails'] as Map<String, dynamic>?;
+                  final address = deliveryDetails?['address'] as String? ?? 'غير متوفر';
+                  final deliveryCost = deliveryDetails?['cost'] as num? ?? 0;
+                  final location = deliveryDetails?['location'] as Map<String, dynamic>?;
+                  final time = deliveryDetails?['time'] as num? ?? 0;
+                  final totalPrice = storeOrder['totalPrice'] as num? ?? 0;
+                  final orderCost = totalPrice;
+                  final totalCost = totalPrice + deliveryCost;
+                  
+                  return FutureBuilder<String>(
+                    future: _orderController.getCustomerName(userId),
+                    builder: (context, userSnapshot) {
+                      if (userSnapshot.connectionState == ConnectionState.waiting) {
+                        return _buildOrderCard(
+                          'جاري التحميل...',
+                          'العنوان: $address\nتكلفة التوصيل: $deliveryCost شيكل\nتكلفة الطلب: $orderCost شيكل\nالتكلفة الإجمالية: $totalCost شيكل\nالوقت المتوقع: $time دقيقة',
+                          Colors.grey,
+                          orderId: mainOrder['orderId'] as String? ?? '',
+                          userId: userId,
+                        );
+                      }
+
+                      if (userSnapshot.hasError) {
+                        return _buildOrderCard(
+                          'خطأ في جلب اسم العميل',
+                          'العنوان: $address\nتكلفة التوصيل: $deliveryCost شيكل\nتكلفة الطلب: $orderCost شيكل\nالتكلفة الإجمالية: $totalCost شيكل\nالوقت المتوقع: $time دقيقة',
+                          Colors.redAccent,
+                          orderId: mainOrder['orderId'] as String? ?? '',
+                          userId: userId,
+                        );
+                      }
+
+                      final customerName = userSnapshot.data ?? 'غير معروف';
+
+                      return _buildOrderCard(
+                        customerName,
+                        'العنوان: $address\nتكلفة التوصيل: $deliveryCost شيكل\nتكلفة الطلب: $orderCost شيكل\nالتكلفة الإجمالية: $totalCost شيكل\nالوقت المتوقع: $time دقيقة',
+                        Colors.white,
+                        orderId: mainOrder['orderId'] as String? ?? '',
+                        userId: userId,
+                        onAccept: () async {
+                          await _orderController.acceptOrder(
+                              mainOrder['orderId'] as String? ?? '', userId);
+                        },
+                      );
+                    },
+                  );
+                }).toList(),
+              );
+            },
+          ),
         );
       },
     );
