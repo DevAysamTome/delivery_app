@@ -203,6 +203,13 @@ class _HomeContentState extends State<HomeContent> {
         }
 
         final allOrders = snapshot.data!['mainOrders'] as List<Map<String, dynamic>>;
+        
+        // Sort orders by timestamp in descending order
+        allOrders.sort((a, b) {
+          final timestampA = (a['mainOrder']['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
+          final timestampB = (b['mainOrder']['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
+          return timestampB.compareTo(timestampA);
+        });
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -228,7 +235,7 @@ class _HomeContentState extends State<HomeContent> {
                   final totalPrice = storeOrder['totalPrice'] as num? ?? 0;
                   final orderCost = totalPrice;
                   final totalCost = totalPrice + deliveryCost;
-                  
+                  final orderId = mainOrder['orderId'] as String? ?? '';
                   return FutureBuilder<String>(
                     future: _orderController.getCustomerName(userId),
                     builder: (context, userSnapshot) {
@@ -288,6 +295,7 @@ class _HomeContentState extends State<HomeContent> {
       stream: FirebaseFirestore.instance
           .collection('orders')
           .doc(orderId)
+
           .snapshots(),
       builder: (context, snapshot) {
         final String orderStatus = snapshot.hasData ? 
@@ -316,6 +324,15 @@ class _HomeContentState extends State<HomeContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                                Text(
+                  'رقم الطلب: $orderId',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                                const SizedBox(height: 8),
+
                 Text(
                   'اسم العميل: $customerName',
                   style: const TextStyle(

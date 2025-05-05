@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final String orderId;
@@ -201,6 +202,15 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
+                                          'رقم الطلب: ${widget.orderId}',
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.redAccent,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
                                           'اسم العميل: $customerName',
                                           style: const TextStyle(
                                             fontSize: 18,
@@ -211,6 +221,32 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                         Text(
                                           'رقم الهاتف: $customerPhone',
                                           style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        ElevatedButton.icon(
+                                          onPressed: () async {
+                                            final Uri phoneUri = Uri(
+                                              scheme: 'tel',
+                                              path: customerPhone,
+                                            );
+                                            if (await canLaunchUrl(phoneUri)) {
+                                              await launchUrl(phoneUri);
+                                            } else {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text('لا يمكن فتح تطبيق الهاتف'),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                          icon: const Icon(Icons.phone),
+                                          label: const Text('اتصال'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green,
+                                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                          ),
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
@@ -231,6 +267,34 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                             color: Colors.redAccent,
                                           ),
                                         ),
+                                        if ((firstStoreOrder.data() as Map<String, dynamic>?)?.containsKey('notes') == true && 
+                                            firstStoreOrder['notes'] != null && 
+                                            firstStoreOrder['notes'].toString().isNotEmpty)
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const SizedBox(height: 8),
+                                              const Text(
+                                                'ملاحظات العميل:',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Container(
+                                                padding: const EdgeInsets.all(8.0),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[100],
+                                                  borderRadius: BorderRadius.circular(8.0),
+                                                ),
+                                                child: Text(
+                                                  firstStoreOrder['notes'],
+                                                  style: const TextStyle(fontSize: 16),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                       ],
                                     ),
                                   ),
@@ -329,17 +393,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                   children: [
-                                    if (!isOrderAccepted)
-                                      ElevatedButton.icon(
-                                        onPressed: acceptOrder,
-                                        icon: const Icon(Icons.check_circle_outline),
-                                        label: const Text('تم التوصيل'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green,
-                                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                        ),
-                                      ),
-                                    if (isOrderAccepted)
+                                    
+                                    if (!isOrderAccepted && !isOrderReceived )
                                       ElevatedButton.icon(
                                         onPressed: null,
                                         icon: const Icon(Icons.check_circle),
