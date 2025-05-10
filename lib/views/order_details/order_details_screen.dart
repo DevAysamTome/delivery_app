@@ -29,12 +29,56 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   late LatLng destination;
   bool isOrderAccepted = false;
   bool isOrderReceived = false;
+  Location location = Location();
+  bool _isTracking = true;
+  bool _isManualControl = false;
 
   @override
   void initState() {
     super.initState();
     getCurrentLocation();
     checkOrderStatus();
+    // Start location updates
+    location.onLocationChanged.listen((LocationData currentLocation) {
+      if (_isTracking && !_isManualControl && mounted) {
+        setState(() {
+          this.currentLocation = currentLocation;
+          updateMapCamera();
+        });
+      }
+    });
+  }
+
+  void updateMapCamera() {
+    if (currentLocation != null && mapController != null) {
+      mapController.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(
+              currentLocation!.latitude!,
+              currentLocation!.longitude!,
+            ),
+            zoom: 15.0,
+          ),
+        ),
+      );
+    }
+  }
+
+  void centerOnCurrentLocation() {
+    if (currentLocation != null && mapController != null) {
+      setState(() {
+        _isManualControl = false;
+        _isTracking = true;
+      });
+      updateMapCamera();
+    }
+  }
+
+  @override
+  void dispose() {
+    location.enableBackgroundMode(enable: false);
+    super.dispose();
   }
 
   Future<void> checkOrderStatus() async {
@@ -347,45 +391,92 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                     elevation: 4,
                                     child: currentLocation == null
                                         ? const Center(child: CircularProgressIndicator())
-                                        : GoogleMap(
-                                            initialCameraPosition: CameraPosition(
-                                              target: LatLng(
-                                                currentLocation!.latitude!,
-                                                currentLocation!.longitude!,
-                                              ),
-                                              zoom: 15.0,
-                                            ),
-                                            markers: {
-                                              Marker(
-                                                markerId:
-                                                    const MarkerId('currentLocation'),
-                                                position: LatLng(
-                                                  currentLocation!.latitude!,
-                                                  currentLocation!.longitude!,
+                                        : Stack(
+                                            children: [
+                                              GoogleMap(
+                                                initialCameraPosition: CameraPosition(
+                                                  target: LatLng(
+                                                    currentLocation!.latitude!,
+                                                    currentLocation!.longitude!,
+                                                  ),
+                                                  zoom: 15.0,
                                                 ),
-                                                infoWindow: const InfoWindow(
-                                                    title: 'موقعي الحالي'),
+                                                markers: {
+                                                  Marker(
+                                                    markerId: const MarkerId('currentLocation'),
+                                                    position: LatLng(
+                                                      currentLocation!.latitude!,
+                                                      currentLocation!.longitude!,
+                                                    ),
+                                                    infoWindow: const InfoWindow(title: 'موقعي الحالي'),
+                                                  ),
+                                                  Marker(
+                                                    markerId: const MarkerId('destination'),
+                                                    position: destination,
+                                                    infoWindow: const InfoWindow(title: 'موقع التوصيل'),
+                                                  ),
+                                                },
+                                                polylines: {
+                                                  Polyline(
+                                                    polylineId: const PolylineId('route'),
+                                                    points: polylineCoordinates,
+                                                    color: Colors.blue,
+                                                    width: 5,
+                                                  ),
+                                                },
+                                                myLocationEnabled: true,
+                                                myLocationButtonEnabled: true,
+                                                zoomControlsEnabled: true,
+                                                mapToolbarEnabled: true,
+                                                onMapCreated: (GoogleMapController controller) {
+                                                  mapController = controller;
+                                                  updateMapCamera();
+                                                },
+                                                onCameraMove: (_) {
+                                                  if (_isTracking) {
+                                                    setState(() {
+                                                      _isManualControl = true;
+                                                      _isTracking = false;
+                                                    });
+                                                  }
+                                                },
                                               ),
-                                              Marker(
-                                                markerId: const MarkerId('destination'),
-                                                position: destination,
-                                                infoWindow: const InfoWindow(
-                                                    title: 'موقع التوصيل'),
+                                              Positioned(
+                                                top: 10,
+                                                right: 10,
+                                                child: Column(
+                                                  children: [
+                                                    FloatingActionButton(
+                                                      heroTag: 'tracking',
+                                                      onPressed: () {
+                                                        setState(() {
+                                                          _isTracking = !_isTracking;
+                                                          if (_isTracking) {
+                                                            _isManualControl = false;
+                                                            updateMapCamera();
+                                                          }
+                                                        });
+                                                      },
+                                                      backgroundColor: _isTracking ? Colors.green : Colors.grey,
+                                                      child: Icon(
+                                                        _isTracking ? Icons.location_searching : Icons.location_disabled,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    FloatingActionButton(
+                                                      heroTag: 'center',
+                                                      onPressed: centerOnCurrentLocation,
+                                                      backgroundColor: Colors.blue,
+                                                      child: const Icon(
+                                                        Icons.my_location,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                            },
-                                            polylines: {
-                                              Polyline(
-                                                polylineId: const PolylineId('route'),
-                                                points: polylineCoordinates,
-                                                color: Colors.blue,
-                                                width: 5,
-                                              ),
-                                            },
-                                            myLocationEnabled: true,
-                                            onMapCreated:
-                                                (GoogleMapController controller) {
-                                              mapController = controller;
-                                            },
+                                            ],
                                           ),
                                   ),
                                 ),
