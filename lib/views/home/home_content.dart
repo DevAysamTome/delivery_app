@@ -16,14 +16,14 @@ class HomeContent extends StatefulWidget {
 
 class _HomeContentState extends State<HomeContent> {
   final OrderController _orderController = OrderController();
-  final DeliveryPersonController _deliveryPersonController = DeliveryPersonController();
+  final DeliveryPersonController _deliveryPersonController =
+      DeliveryPersonController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
     super.initState();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +38,7 @@ class _HomeContentState extends State<HomeContent> {
             }
 
             final isAvailable = snapshot.data?.isAvailable ?? false;
-            
+
             return Padding(
               padding: const EdgeInsets.all(16.0),
               child: Card(
@@ -62,7 +62,8 @@ class _HomeContentState extends State<HomeContent> {
                       Switch(
                         value: isAvailable,
                         onChanged: (bool value) {
-                          _deliveryPersonController.updateAvailabilityStatus(value);
+                          _deliveryPersonController
+                              .updateAvailabilityStatus(value);
                         },
                         activeColor: Colors.green,
                         inactiveThumbColor: Colors.red,
@@ -86,32 +87,41 @@ class _HomeContentState extends State<HomeContent> {
                     child: StreamBuilder<int>(
                       stream: _orderController.getNewInProgressOrdersCount(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return _buildCard('الطلبات الجديدة', 'جاري التحميل...');
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return _buildCard(
+                              'الطلبات الجديدة', 'جاري التحميل...');
                         } else if (snapshot.hasError) {
-                          print('Error in new orders stream: ${snapshot.error}');
+                          print(
+                              'Error in new orders stream: ${snapshot.error}');
                           return _buildCard('الطلبات الجديدة', 'خطأ');
                         } else if (!snapshot.hasData) {
                           return _buildCard('الطلبات الجديدة', '0');
                         } else {
-                          return _buildCard('الطلبات الجديدة', snapshot.data.toString());
+                          return _buildCard(
+                              'الطلبات الجديدة', snapshot.data.toString());
                         }
                       },
                     ),
                   ),
                   Expanded(
                     child: StreamBuilder<int>(
-                      stream: _orderController.getOnGoingInProgressOrdersCount(),
+                      stream:
+                          _orderController.getOnGoingInProgressOrdersCount(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return _buildCard('الطلبات قيد التوصيل', 'جاري التحميل...');
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return _buildCard(
+                              'الطلبات قيد التوصيل', 'جاري التحميل...');
                         } else if (snapshot.hasError) {
-                          print('Error in ongoing orders stream: ${snapshot.error}');
+                          print(
+                              'Error in ongoing orders stream: ${snapshot.error}');
                           return _buildCard('الطلبات قيد التوصيل', 'خطأ');
                         } else if (!snapshot.hasData) {
                           return _buildCard('الطلبات قيد التوصيل', '0');
                         } else {
-                          return _buildCard('الطلبات قيد التوصيل', snapshot.data.toString());
+                          return _buildCard(
+                              'الطلبات قيد التوصيل', snapshot.data.toString());
                         }
                       },
                     ),
@@ -190,10 +200,11 @@ class _HomeContentState extends State<HomeContent> {
           );
         }
 
-        if (!snapshot.hasData || 
-            snapshot.data == null || 
-            snapshot.data!['mainOrders'] == null || 
-            (snapshot.data!['mainOrders'] as List<Map<String, dynamic>>).isEmpty) {
+        if (!snapshot.hasData ||
+            snapshot.data == null ||
+            snapshot.data!['mainOrders'] == null ||
+            (snapshot.data!['mainOrders'] as List<Map<String, dynamic>>)
+                .isEmpty) {
           return const Center(
             child: Text(
               'لا توجد طلبات متاحة حالياً',
@@ -202,12 +213,17 @@ class _HomeContentState extends State<HomeContent> {
           );
         }
 
-        final allOrders = snapshot.data!['mainOrders'] as List<Map<String, dynamic>>;
-        
+        final allOrders =
+            snapshot.data!['mainOrders'] as List<Map<String, dynamic>>;
+
         // Sort orders by timestamp in descending order
         allOrders.sort((a, b) {
-          final timestampA = (a['mainOrder']['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
-          final timestampB = (b['mainOrder']['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
+          final timestampA =
+              (a['mainOrder']['timestamp'] as Timestamp?)?.toDate() ??
+                  DateTime(0);
+          final timestampB =
+              (b['mainOrder']['timestamp'] as Timestamp?)?.toDate() ??
+                  DateTime(0);
           return timestampB.compareTo(timestampA);
         });
 
@@ -222,15 +238,19 @@ class _HomeContentState extends State<HomeContent> {
             itemBuilder: (context, index) {
               final orderData = allOrders[index];
               final mainOrder = orderData['mainOrder'] as Map<String, dynamic>;
-              final storeOrders = orderData['storeOrders'] as List<Map<String, dynamic>>;
-              
+              final storeOrders =
+                  orderData['storeOrders'] as List<Map<String, dynamic>>;
+
               return Column(
                 children: storeOrders.map((storeOrder) {
                   final userId = mainOrder['userId'] as String? ?? '';
-                  final deliveryDetails = storeOrder['deliveryDetails'] as Map<String, dynamic>?;
-                  final address = deliveryDetails?['address'] as String? ?? 'غير متوفر';
+                  final deliveryDetails =
+                      storeOrder['deliveryDetails'] as Map<String, dynamic>?;
+                  final address =
+                      deliveryDetails?['address'] as String? ?? 'غير متوفر';
                   final deliveryCost = deliveryDetails?['cost'] as num? ?? 0;
-                  final location = deliveryDetails?['location'] as Map<String, dynamic>?;
+                  final location =
+                      deliveryDetails?['location'] as Map<String, dynamic>?;
                   final time = deliveryDetails?['time'] as num? ?? 0;
                   final totalPrice = storeOrder['totalPrice'] as num? ?? 0;
                   final orderCost = totalPrice;
@@ -239,7 +259,8 @@ class _HomeContentState extends State<HomeContent> {
                   return FutureBuilder<String>(
                     future: _orderController.getCustomerName(userId),
                     builder: (context, userSnapshot) {
-                      if (userSnapshot.connectionState == ConnectionState.waiting) {
+                      if (userSnapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return _buildOrderCard(
                           'جاري التحميل...',
                           'العنوان: $address\nتكلفة التوصيل: $deliveryCost شيكل\nتكلفة الطلب: $orderCost شيكل\nالتكلفة الإجمالية: $totalCost شيكل\nالوقت المتوقع: $time دقيقة',
@@ -295,24 +316,25 @@ class _HomeContentState extends State<HomeContent> {
       stream: FirebaseFirestore.instance
           .collection('orders')
           .doc(orderId)
-
           .snapshots(),
       builder: (context, snapshot) {
-        final String orderStatus = snapshot.hasData ? 
-            (snapshot.data?.get('orderStatus') as String? ?? '') : '';
-        
+        final String orderStatus = snapshot.hasData
+            ? (snapshot.data?.get('orderStatus') as String? ?? '')
+            : '';
+
         final bool isAccepted = orderStatus == 'تم اخذ الطلب';
         final bool isReceived = orderStatus == 'عامل التوصيل قد استلم الطلب';
         final bool isInDelivery = orderStatus == 'جاري التوصيل';
         final bool isDelivered = orderStatus == 'تم التوصيل';
-        
+
         // Check if order is assigned by admin
-        final bool isAssignedByAdmin = snapshot.hasData && 
-            snapshot.data!.exists && 
-            snapshot.data!.data() != null && 
-            (snapshot.data!.data() as Map<String, dynamic>).containsKey('assignedTo') &&
+        final bool isAssignedByAdmin = snapshot.hasData &&
+            snapshot.data!.exists &&
+            snapshot.data!.data() != null &&
+            (snapshot.data!.data() as Map<String, dynamic>)
+                .containsKey('assignedTo') &&
             snapshot.data!.get('assignedTo') == _auth.currentUser?.uid;
-        
+
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
           elevation: 4.0,
@@ -324,15 +346,14 @@ class _HomeContentState extends State<HomeContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                                Text(
+                Text(
                   'رقم الطلب: $orderId',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                                const SizedBox(height: 8),
-
+                const SizedBox(height: 8),
                 Text(
                   'اسم العميل: $customerName',
                   style: const TextStyle(
@@ -377,22 +398,32 @@ class _HomeContentState extends State<HomeContent> {
                       label: const Text('عرض التفاصيل'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
                       ),
                     ),
-                    if (!isAccepted && !isReceived && !isInDelivery && !isDelivered && onAccept != null)
+                    if (!isAccepted &&
+                        !isReceived &&
+                        !isInDelivery &&
+                        !isDelivered &&
+                        onAccept != null)
                       ElevatedButton.icon(
                         onPressed: () {
-                          _orderController.acceptOrder(orderId, _auth.currentUser!.uid);
+                          _orderController.acceptOrder(
+                              orderId, _auth.currentUser!.uid);
                         },
                         icon: const Icon(Icons.check_circle_outline),
                         label: const Text('قبول الطلب'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
                         ),
                       ),
-                    if (isAccepted && !isReceived && !isInDelivery && !isDelivered)
+                    if (isAccepted &&
+                        !isReceived &&
+                        !isInDelivery &&
+                        !isDelivered)
                       ElevatedButton.icon(
                         onPressed: () {
                           _orderController.confirmOrderReceived(orderId);
@@ -401,7 +432,8 @@ class _HomeContentState extends State<HomeContent> {
                         label: const Text('تم استلام الطلب'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
                         ),
                       ),
                     if (isInDelivery && !isDelivered)
@@ -413,7 +445,8 @@ class _HomeContentState extends State<HomeContent> {
                         label: const Text('تم التوصيل'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
                         ),
                       ),
                     if (isDelivered)
@@ -423,7 +456,8 @@ class _HomeContentState extends State<HomeContent> {
                         label: const Text('تم التوصيل'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
                         ),
                       ),
                   ],

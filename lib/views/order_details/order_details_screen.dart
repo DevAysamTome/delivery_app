@@ -32,6 +32,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   Location location = Location();
   bool _isTracking = true;
   bool _isManualControl = false;
+  Map<String, String> storeNames = {};
 
   @override
   void initState() {
@@ -157,6 +158,55 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     }
   }
 
+  Future<String> getStoreName(String storeId) async {
+    if (storeNames.containsKey(storeId)) {
+      return storeNames[storeId]!;
+    }
+    
+    try {
+      // Check restaurant collection
+      DocumentSnapshot restaurantDoc = await FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(storeId)
+          .get();
+      
+      if (restaurantDoc.exists) {
+        String storeName = restaurantDoc['name'] as String? ?? 'متجر غير معروف';
+        storeNames[storeId] = storeName;
+        return storeName;
+      }
+
+      // Check beverage store collection
+      DocumentSnapshot beverageDoc = await FirebaseFirestore.instance
+          .collection('beverageStores')
+          .doc(storeId)
+          .get();
+      
+      if (beverageDoc.exists) {
+        String storeName = beverageDoc['name'] as String? ?? 'متجر غير معروف';
+        storeNames[storeId] = storeName;
+        return storeName;
+      }
+
+      // Check sweet store collection
+      DocumentSnapshot sweetDoc = await FirebaseFirestore.instance
+          .collection('sweetStore')
+          .doc(storeId)
+          .get();
+      
+      if (sweetDoc.exists) {
+        String storeName = sweetDoc['name'] as String? ?? 'متجر غير معروف';
+        storeNames[storeId] = storeName;
+        return storeName;
+      }
+
+      return 'متجر غير معروف';
+    } catch (e) {
+      print('Error fetching store name: $e');
+      return 'متجر غير معروف';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -191,24 +241,32 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
                 // استرداد مستندات storeOrders
                 final storeOrdersDocs = snapshot.data!.docs;
-                final firstStoreOrder = storeOrdersDocs.first;
-                final storeId = firstStoreOrder['storeId'];
-                final orderStatus = firstStoreOrder['orderStatus'] as String? ?? '';
+                
+                if (storeOrdersDocs.isEmpty) {
+                  return const Center(child: Text('لا توجد تفاصيل للطلب'));
+                }
 
-                // التعامل مع بيانات أخرى حسب الحاجة
+                // Get delivery details from the first store order (since delivery details are the same for all)
+                final firstStoreOrder = storeOrdersDocs.first;
                 final deliveryDetails = firstStoreOrder['deliveryDetails'] as Map<String, dynamic>?;
                 final location = deliveryDetails?['location'] as Map<String, dynamic>?;
                 final latitude = location?['latitude'] as double? ?? 0.0;
                 final longitude = location?['longitude'] as double? ?? 0.0;
                 destination = LatLng(latitude, longitude);
-                final items = firstStoreOrder['items'] as List<dynamic>? ?? [];
+
+                // Calculate total price from all store orders
+                double totalPrice = 0;
+                for (var storeOrder in storeOrdersDocs) {
+                  totalPrice += (storeOrder['totalPrice'] as num?)?.toDouble() ?? 0;
+                }
+                // Add delivery cost
+                totalPrice += (deliveryDetails?['cost'] as num?)?.toDouble() ?? 0;
 
                 // يمكن عرض البيانات الآن
                 return FutureBuilder<String>(
                   future: orderController.getCustomerName(widget.userId),
                   builder: (context, nameSnapshot) {
-                    if (nameSnapshot.connectionState ==
-                        ConnectionState.waiting) {
+                    if (nameSnapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
 
@@ -218,14 +276,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               'حدث خطأ أثناء جلب اسم العميل: ${nameSnapshot.error}'));
                     }
 
-                    final customerName =
-                        nameSnapshot.data ?? 'Unknown Customer';
+                    final customerName = nameSnapshot.data ?? 'Unknown Customer';
 
                     return FutureBuilder<String>(
                       future: orderController.getCustomerPhone(widget.userId),
                       builder: (context, phoneSnapshot) {
-                        if (phoneSnapshot.connectionState ==
-                            ConnectionState.waiting) {
+                        if (phoneSnapshot.connectionState == ConnectionState.waiting) {
                           return const Center(child: CircularProgressIndicator());
                         }
 
@@ -237,6 +293,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // Customer Info Card
                                 Card(
                                   elevation: 4,
                                   margin: const EdgeInsets.symmetric(vertical: 10),
@@ -304,7 +361,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
-                                          'التكلفة الإجمالية: ${firstStoreOrder['totalPrice'] + deliveryDetails?['cost'] ?? 0} شيكل',
+                                          'التكلفة الإجمالية: ${totalPrice.toStringAsFixed(2)} شيكل',
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
@@ -349,36 +406,64 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                   style: Theme.of(context).textTheme.headlineSmall,
                                 ),
                                 const SizedBox(height: 10),
-                                Card(
-                                  elevation: 4,
-                                  margin: const EdgeInsets.symmetric(vertical: 10),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: items.map((item) {
-                                        return Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 8.0),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                '${item['mealName']} (${item['quantity']})',
+                                // Store Orders
+                                ...storeOrdersDocs.map((storeOrder) {
+                                  final items = storeOrder['items'] as List<dynamic>? ?? [];
+                                  final storeTotal = (storeOrder['totalPrice'] as num?)?.toDouble() ?? 0;
+                                  
+                                  return Card(
+                                    elevation: 4,
+                                    margin: const EdgeInsets.symmetric(vertical: 10),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          FutureBuilder<String>(
+                                            future: getStoreName(storeOrder['storeId']),
+                                            builder: (context, storeSnapshot) {
+                                              return Text(
+                                                storeSnapshot.data ?? 'جاري التحميل...',
                                                 style: const TextStyle(
-                                                  fontSize: 16,
+                                                  fontSize: 18,
                                                   fontWeight: FontWeight.bold,
+                                                  color: Colors.redAccent,
                                                 ),
-                                              ),
-                                              Text('سعر: ${item['mealPrice']}'),
-                                            ],
+                                              );
+                                            },
                                           ),
-                                        );
-                                      }).toList(),
+                                          const SizedBox(height: 8),
+                                          ...items.map((item) {
+                                            return Padding(
+                                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    '${item['mealName']} (${item['quantity']})',
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  Text('سعر: ${(item['mealPrice'] as num?)?.toDouble() ?? 0} شيكل'),
+                                                ],
+                                              ),
+                                            );
+                                          }).toList(),
+                                          const Divider(),
+                                          Text(
+                                            'المجموع الفرعي: ${storeTotal.toStringAsFixed(2)} شيكل',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ),
+                                  );
+                                }).toList(),
                                 const SizedBox(height: 10),
                                 Text(
                                   'موقع التوصيل:',
@@ -509,3 +594,4 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             )));
   }
 }
+

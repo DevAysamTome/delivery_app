@@ -229,17 +229,19 @@ class OrderController {
   // تأكيد استلام الطلب من المطعم
   Future<void> confirmOrderReceived(String orderId) async {
     try {
+      // First update the order status to received
       await _firestore.collection('orders').doc(orderId).update({
         'orderStatus': 'عامل التوصيل قد استلم الطلب',
-        'receivedAt': Timestamp.now()
+        'receivedAt': Timestamp.now(),
+        'deliveryTimer': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 5))), // Add timer field
       });
 
-      // Set a timer to change status to "جاري التوصيل" after 5 minutes
-      Future.delayed(const Duration(minutes: 5), () async {
-        await _firestore.collection('orders').doc(orderId).update({
-          'orderStatus': 'جاري التوصيل',
-          'deliveryStartedAt': Timestamp.now()
-        });
+      // Call the Cloud Function to handle the timer
+      await _firestore.collection('delivery_timers').doc(orderId).set({
+        'orderId': orderId,
+        'orderStatus': 'pending',
+        'createdAt': Timestamp.now(),
+        'scheduledTime': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 5))),
       });
     } catch (e) {
       print('Error confirming order received: $e');

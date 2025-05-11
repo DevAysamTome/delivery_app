@@ -1,67 +1,60 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { PubSub } = require('@google-cloud/pubsub');
 
-admin.initializeApp();
-const pubsub = new PubSub();
+// Function to handle the initial timer creation
+exports.handleDeliveryTimer = functions.firestore
+    .document('delivery_timers/{timerId}')
+    .onCreate(async (snap, context) => {
+        const timerData = snap.data();
+        const orderId = timerData.orderId;
+        const scheduledTime = timerData.scheduledTime.toDate();
 
-exports.checkStoreOrdersStatus = functions.firestore
-  .document('orders/{orderId}/storeOrders/{storeOrderId}')
-  .onUpdate(async (change, context) => {
-    const orderId = context.params.orderId;
-    const storeOrderId = context.params.storeOrderId;
+        // Schedule the status update
+        await admin.firestore().collection('scheduled_updates').doc(orderId).set({
+            'orderId': orderId,
+            'scheduledTime': scheduledTime,
+            'status': 'pending'
+        });
 
-    const beforeStatus = change.before.data().orderStatus;
-    const afterStatus = change.after.data().orderStatus;
+        return null;
+    });
 
-    if (beforeStatus === afterStatus) {
-      console.log(`No status change in storeOrder ${storeOrderId}`);
-      return null;
-    }
+// Function to check and process scheduled updates
+exports.processScheduledUpdates = functions.pubsub
+    .schedule('every 1 minutes')
+    .onRun(async (context) => {
+        const now = admin.firestore.Timestamp.now();
+        
+        // Get all pending updates that are due
+        const updates = await admin.firestore()
+            .collection('scheduled_updates')
+            .where('status', '==', 'pending')
+            .where('scheduledTime', '<=', now)
+            .get();
 
-    console.log(`Detected change in storeOrder ${storeOrderId}. Checking all storeOrders...`);
+        // Process each update
+        const batch = admin.firestore().batch();
+        
+        for (const doc of updates.docs) {
+            const data = doc.data();
+            const orderId = data.orderId;
 
-    const orderRef = admin.firestore().collection('orders').doc(orderId);
-    const storeOrdersRef = orderRef.collection('storeOrders');
+            // Update the order status
+            const orderRef = admin.firestore().collection('orders').doc(orderId);
+            batch.update(orderRef, {
+                'orderStatus': 'جاري التوصيل',
+                'deliveryStartedAt': now
+            });
 
-    const snapshot = await storeOrdersRef.get();
-    if (snapshot.empty) {
-      console.log('No storeOrders found.');
-      return null;
-    }
+            // Mark the scheduled update as completed
+            batch.update(doc.ref, {
+                'status': 'completed',
+                'processedAt': now
+            });
+        }
 
-    const allReady = snapshot.docs.every(doc =>
-      doc.data().orderStatus?.trim() === 'تم تجهيز الطلب'
-    );
-
-    if (!allReady) {
-      console.log('Not all storeOrders are ready.');
-      return null;
-    }
-
-    const orderDoc = await orderRef.get();
-    if (!orderDoc.exists) {
-      console.log(`Order ${orderId} not found.`);
-      return null;
-    }
-
-    const mainOrderStatus = orderDoc.data().orderStatus;
-    if (mainOrderStatus === 'تم تجهيز الطلب') {
-      console.log('Main order already marked as ready.');
-      return null;
-    }
-
-    await orderRef.update({ orderStatus: 'تم تجهيز الطلب' });
-    console.log(`Main order ${orderId} marked as ready.`);
-
-    // Optional: publish to pubsub
-    try {
-      const message = JSON.stringify({ orderId });
-      await pubsub.topic('orderCompleted').publish(Buffer.from(message));
-      console.log('Published to orderCompleted topic:', message);
-    } catch (err) {
-      console.error('PubSub error:', err);
-    }
-
-    return null;
-  });
+        // Commit all updates
+        await batch.commit();
+        
+        return null;
+    }); 
