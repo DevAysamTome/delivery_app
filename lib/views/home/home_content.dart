@@ -436,7 +436,7 @@ class _HomeContentState extends State<HomeContent> {
                               horizontal: 20, vertical: 12),
                         ),
                       ),
-                    if (isInDelivery && !isDelivered)
+                    if (isInDelivery && isReceived && !isDelivered)
                       ElevatedButton.icon(
                         onPressed: () {
                           _orderController.completeDelivery(orderId);

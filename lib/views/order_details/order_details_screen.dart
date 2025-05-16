@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:delivery_app/views/order_details/map_screen.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final String orderId;
@@ -470,99 +471,47 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                   style: Theme.of(context).textTheme.headlineSmall,
                                 ),
                                 const SizedBox(height: 10),
-                                SizedBox(
-                                  height: 300,
-                                  child: Card(
-                                    elevation: 4,
-                                    child: currentLocation == null
-                                        ? const Center(child: CircularProgressIndicator())
-                                        : Stack(
-                                            children: [
-                                              GoogleMap(
-                                                initialCameraPosition: CameraPosition(
-                                                  target: LatLng(
-                                                    currentLocation!.latitude!,
-                                                    currentLocation!.longitude!,
+                                Card(
+                                  elevation: 4,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'العنوان: ${deliveryDetails?['address'] ?? 'غير متوفر'}',
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => MapScreen(
+                                                    destination: destination,
+                                                    initialLocation: currentLocation != null
+                                                        ? LatLng(
+                                                            currentLocation!.latitude!,
+                                                            currentLocation!.longitude!,
+                                                          )
+                                                        : null,
                                                   ),
-                                                  zoom: 15.0,
                                                 ),
-                                                markers: {
-                                                  Marker(
-                                                    markerId: const MarkerId('currentLocation'),
-                                                    position: LatLng(
-                                                      currentLocation!.latitude!,
-                                                      currentLocation!.longitude!,
-                                                    ),
-                                                    infoWindow: const InfoWindow(title: 'موقعي الحالي'),
-                                                  ),
-                                                  Marker(
-                                                    markerId: const MarkerId('destination'),
-                                                    position: destination,
-                                                    infoWindow: const InfoWindow(title: 'موقع التوصيل'),
-                                                  ),
-                                                },
-                                                polylines: {
-                                                  Polyline(
-                                                    polylineId: const PolylineId('route'),
-                                                    points: polylineCoordinates,
-                                                    color: Colors.blue,
-                                                    width: 5,
-                                                  ),
-                                                },
-                                                myLocationEnabled: true,
-                                                myLocationButtonEnabled: true,
-                                                zoomControlsEnabled: true,
-                                                mapToolbarEnabled: true,
-                                                onMapCreated: (GoogleMapController controller) {
-                                                  mapController = controller;
-                                                  updateMapCamera();
-                                                },
-                                                onCameraMove: (_) {
-                                                  if (_isTracking) {
-                                                    setState(() {
-                                                      _isManualControl = true;
-                                                      _isTracking = false;
-                                                    });
-                                                  }
-                                                },
-                                              ),
-                                              Positioned(
-                                                top: 10,
-                                                right: 10,
-                                                child: Column(
-                                                  children: [
-                                                    FloatingActionButton(
-                                                      heroTag: 'tracking',
-                                                      onPressed: () {
-                                                        setState(() {
-                                                          _isTracking = !_isTracking;
-                                                          if (_isTracking) {
-                                                            _isManualControl = false;
-                                                            updateMapCamera();
-                                                          }
-                                                        });
-                                                      },
-                                                      backgroundColor: _isTracking ? Colors.green : Colors.grey,
-                                                      child: Icon(
-                                                        _isTracking ? Icons.location_searching : Icons.location_disabled,
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 8),
-                                                    FloatingActionButton(
-                                                      heroTag: 'center',
-                                                      onPressed: centerOnCurrentLocation,
-                                                      backgroundColor: Colors.blue,
-                                                      child: const Icon(
-                                                        Icons.my_location,
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
+                                              );
+                                            },
+                                            icon: const Icon(Icons.map),
+                                            label: const Text('فتح الخريطة'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.redAccent,
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                            ),
                                           ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 20),
