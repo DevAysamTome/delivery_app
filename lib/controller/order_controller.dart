@@ -241,7 +241,7 @@ class OrderController {
         'orderId': orderId,
         'orderStatus': 'pending',
         'createdAt': Timestamp.now(),
-        'scheduledTime': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 5))),
+        'scheduledTime': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 1))),
       });
     } catch (e) {
       print('Error confirming order received: $e');
