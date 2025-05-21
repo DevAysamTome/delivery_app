@@ -233,16 +233,11 @@ class OrderController {
       await _firestore.collection('orders').doc(orderId).update({
         'orderStatus': 'عامل التوصيل قد استلم الطلب',
         'receivedAt': Timestamp.now(),
-        'deliveryTimer': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 5))), // Add timer field
+        'deliveryTimer': Timestamp.fromDate(DateTime.now().add(const Duration(seconds: 5))), // Add timer field
       });
 
       // Call the Cloud Function to handle the timer
-      await _firestore.collection('delivery_timers').doc(orderId).set({
-        'orderId': orderId,
-        'orderStatus': 'pending',
-        'createdAt': Timestamp.now(),
-        'scheduledTime': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 1))),
-      });
+      
     } catch (e) {
       print('Error confirming order received: $e');
       rethrow;
