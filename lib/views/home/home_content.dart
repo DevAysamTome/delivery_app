@@ -4,8 +4,9 @@ import 'package:delivery_app/models/delivery_person.dart';
 import 'package:delivery_app/views/order_details/order_details_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:delivery_app/services/api_service.dart';
+import 'package:delivery_app/res/constants/app_strings.dart';
 
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
@@ -23,6 +24,21 @@ class _HomeContentState extends State<HomeContent> {
   @override
   void initState() {
     super.initState();
+    _deliveryPersonController.getDeliveryPersonStatus();
+    _getCurrentDeliveryWorkerId();
+  }
+
+  Future<String?> _getCurrentDeliveryWorkerId() async {
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId != null) {
+        final deliveryWorker = await ApiService.getDeliveryWorker(userId);
+        return deliveryWorker?.id;
+      }
+    } catch (e) {
+      print('Error getting delivery worker ID: $e');
+    }
+    return null;
   }
 
   @override
@@ -52,7 +68,7 @@ class _HomeContentState extends State<HomeContent> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'حالة التواجد',
+                        AppStrings.presenceStatus,
                         style: TextStyle(
                           fontSize: 18.0,
                           fontWeight: FontWeight.bold,
@@ -61,9 +77,22 @@ class _HomeContentState extends State<HomeContent> {
                       ),
                       Switch(
                         value: isAvailable,
-                        onChanged: (bool value) {
-                          _deliveryPersonController
-                              .updateAvailabilityStatus(value);
+                        onChanged: (bool value) async {
+                          print('Switch toggled to: $value');
+                          try {
+                            await _deliveryPersonController
+                                .updateAvailabilityStatus(value);
+                            print('Availability status updated successfully');
+                          } catch (e) {
+                            print('Error updating availability status: $e');
+                            // Show error message to user
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('خطأ في تحديث حالة التواجد: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         },
                         activeColor: Colors.green,
                         inactiveThumbColor: Colors.red,
@@ -90,16 +119,16 @@ class _HomeContentState extends State<HomeContent> {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
                           return _buildCard(
-                              'الطلبات الجديدة', 'جاري التحميل...');
+                              AppStrings.newOrders, AppStrings.loading);
                         } else if (snapshot.hasError) {
                           print(
                               'Error in new orders stream: ${snapshot.error}');
-                          return _buildCard('الطلبات الجديدة', 'خطأ');
+                          return _buildCard(AppStrings.newOrders, AppStrings.error);
                         } else if (!snapshot.hasData) {
-                          return _buildCard('الطلبات الجديدة', '0');
+                          return _buildCard(AppStrings.newOrders, '0');
                         } else {
                           return _buildCard(
-                              'الطلبات الجديدة', snapshot.data.toString());
+                              AppStrings.newOrders, snapshot.data.toString());
                         }
                       },
                     ),
@@ -112,16 +141,16 @@ class _HomeContentState extends State<HomeContent> {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
                           return _buildCard(
-                              'الطلبات قيد التوصيل', 'جاري التحميل...');
+                              AppStrings.ongoingOrders, AppStrings.loading);
                         } else if (snapshot.hasError) {
                           print(
                               'Error in ongoing orders stream: ${snapshot.error}');
-                          return _buildCard('الطلبات قيد التوصيل', 'خطأ');
+                          return _buildCard(AppStrings.ongoingOrders, AppStrings.error);
                         } else if (!snapshot.hasData) {
-                          return _buildCard('الطلبات قيد التوصيل', '0');
+                          return _buildCard(AppStrings.ongoingOrders, '0');
                         } else {
                           return _buildCard(
-                              'الطلبات قيد التوصيل', snapshot.data.toString());
+                              AppStrings.ongoingOrders, snapshot.data.toString());
                         }
                       },
                     ),
@@ -132,13 +161,13 @@ class _HomeContentState extends State<HomeContent> {
           ),
         ),
         // Recent Orders Section
-        const Padding(
-          padding: EdgeInsets.all(16.0),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
           child: Align(
             alignment: Alignment.centerRight,
             child: Text(
-              'الطلبات الحديثة',
-              style: TextStyle(
+              AppStrings.recentOrders,
+              style: const TextStyle(
                 fontSize: 18.0,
                 fontWeight: FontWeight.bold,
                 color: Colors.redAccent,
@@ -196,7 +225,7 @@ class _HomeContentState extends State<HomeContent> {
         if (snapshot.hasError) {
           print('Error in orders stream: ${snapshot.error}');
           return Center(
-            child: Text('حدث خطأ: ${snapshot.error}'),
+            child: Text('${AppStrings.orderError}${snapshot.error}'),
           );
         }
 
@@ -205,10 +234,10 @@ class _HomeContentState extends State<HomeContent> {
             snapshot.data!['mainOrders'] == null ||
             (snapshot.data!['mainOrders'] as List<Map<String, dynamic>>)
                 .isEmpty) {
-          return const Center(
+          return Center(
             child: Text(
-              'لا توجد طلبات متاحة حالياً',
-              style: TextStyle(fontSize: 16),
+              AppStrings.noOrdersAvailable,
+              style: const TextStyle(fontSize: 16),
             ),
           );
         }
@@ -218,12 +247,12 @@ class _HomeContentState extends State<HomeContent> {
 
         // Sort orders by timestamp in descending order
         allOrders.sort((a, b) {
-          final timestampA =
-              (a['mainOrder']['timestamp'] as Timestamp?)?.toDate() ??
-                  DateTime(0);
-          final timestampB =
-              (b['mainOrder']['timestamp'] as Timestamp?)?.toDate() ??
-                  DateTime(0);
+          final timestampA = a['mainOrder']['createdAt'] != null
+              ? DateTime.parse(a['mainOrder']['createdAt'])
+              : DateTime(0);
+          final timestampB = b['mainOrder']['createdAt'] != null
+              ? DateTime.parse(b['mainOrder']['createdAt'])
+              : DateTime(0);
           return timestampB.compareTo(timestampA);
         });
 
@@ -255,44 +284,51 @@ class _HomeContentState extends State<HomeContent> {
                   final totalPrice = storeOrder['totalPrice'] as num? ?? 0;
                   final orderCost = totalPrice;
                   final totalCost = totalPrice + deliveryCost;
-                  final orderId = mainOrder['orderId'] as String? ?? '';
+                  final orderId = mainOrder['orderId'].toString();
                   return FutureBuilder<String>(
                     future: _orderController.getCustomerName(userId),
                     builder: (context, userSnapshot) {
                       if (userSnapshot.connectionState ==
                           ConnectionState.waiting) {
                         return _buildOrderCard(
-                          'جاري التحميل...',
-                          'العنوان: $address\nتكلفة التوصيل: $deliveryCost شيكل\nتكلفة الطلب: $orderCost شيكل\nالتكلفة الإجمالية: $totalCost شيكل\nالوقت المتوقع: $time دقيقة',
+                          AppStrings.loading,
+                          '${AppStrings.address}$address\n${AppStrings.deliveryCost}$deliveryCost${AppStrings.shekel}\n${AppStrings.orderCost}$orderCost${AppStrings.shekel}\n${AppStrings.totalCost}$totalCost${AppStrings.shekel}\n${AppStrings.expectedTime}$time${AppStrings.minutes}',
                           Colors.grey,
-                          orderId: mainOrder['orderId'] as String? ?? '',
+                          orderId: mainOrder['orderId'].toString() ,
                           userId: userId,
                         );
                       }
 
                       if (userSnapshot.hasError) {
                         return _buildOrderCard(
-                          'خطأ في جلب اسم العميل',
-                          'العنوان: $address\nتكلفة التوصيل: $deliveryCost شيكل\nتكلفة الطلب: $orderCost شيكل\nالتكلفة الإجمالية: $totalCost شيكل\nالوقت المتوقع: $time دقيقة',
+                          AppStrings.customerNameError,
+                          '${AppStrings.address}$address\n${AppStrings.deliveryCost}$deliveryCost${AppStrings.shekel}\n${AppStrings.orderCost}$orderCost${AppStrings.shekel}\n${AppStrings.totalCost}$totalCost${AppStrings.shekel}\n${AppStrings.expectedTime}$time${AppStrings.minutes}',
                           Colors.redAccent,
-                          orderId: mainOrder['orderId'] as String? ?? '',
+                          orderId: mainOrder['orderId'].toString() ,
                           userId: userId,
                         );
                       }
 
-                      final customerName = userSnapshot.data ?? 'غير معروف';
+                      final customerName = userSnapshot.data ?? AppStrings.unknownCustomer;
 
-                      return _buildOrderCard(
-                        customerName,
-                        'العنوان: $address\nتكلفة التوصيل: $deliveryCost شيكل\nتكلفة الطلب: $orderCost شيكل\nالتكلفة الإجمالية: $totalCost شيكل\nالوقت المتوقع: $time دقيقة',
-                        Colors.white,
-                        orderId: mainOrder['orderId'] as String? ?? '',
-                        userId: userId,
-                        onAccept: () async {
-                          await _orderController.acceptOrder(
-                              mainOrder['orderId'] as String? ?? '', userId);
-                        },
-                      );
+                                              return _buildOrderCard(
+                          customerName,
+                          '${AppStrings.address}$address\n${AppStrings.deliveryCost}$deliveryCost${AppStrings.shekel}\n${AppStrings.orderCost}$orderCost${AppStrings.shekel}\n${AppStrings.totalCost}$totalCost${AppStrings.shekel}\n${AppStrings.expectedTime}$time${AppStrings.minutes}',
+                          Colors.white,
+                          orderId: mainOrder['orderId'].toString() ,
+                          userId: userId,
+                          onAccept: () async {
+                            final deliveryWorkerId = await _getCurrentDeliveryWorkerId();
+                            if (deliveryWorkerId != null) {
+                              await _orderController.acceptOrder(
+                                  mainOrder['orderId'].toString() , deliveryWorkerId);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(AppStrings.deliveryWorkerNotFound)),
+                              );
+                            }
+                          },
+                        );
                     },
                   );
                 }).toList(),
@@ -312,28 +348,31 @@ class _HomeContentState extends State<HomeContent> {
     required String userId,
     VoidCallback? onAccept,
   }) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('orders')
-          .doc(orderId)
-          .snapshots(),
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: Stream.periodic(const Duration(seconds: 8), (_) async {
+        try {
+          final order = await ApiService.getOrderById(orderId);
+          return order.toJson();
+        } catch (e) {
+          print('Error fetching order: $e');
+          return null;
+        }
+      }).asyncMap((future) => future),
       builder: (context, snapshot) {
         final String orderStatus = snapshot.hasData
-            ? (snapshot.data?.get('orderStatus') as String? ?? '')
+            ? (snapshot.data?['orderStatus'] as String? ?? '')
             : '';
 
-        final bool isAccepted = orderStatus == 'تم اخذ الطلب';
-        final bool isReceived = orderStatus == 'عامل التوصيل قد استلم الطلب';
-        final bool isInDelivery = orderStatus == 'جاري التوصيل';
-        final bool isDelivered = orderStatus == 'تم التوصيل';
+        final bool isAccepted = orderStatus == AppStrings.orderAccepted;
+        final bool isReceived = orderStatus == AppStrings.orderReceived;
+        final bool isInDelivery = orderStatus == AppStrings.orderInDelivery;
+        final bool isDelivered = orderStatus == AppStrings.orderDeliveredStatus;
 
         // Check if order is assigned by admin
         final bool isAssignedByAdmin = snapshot.hasData &&
-            snapshot.data!.exists &&
-            snapshot.data!.data() != null &&
-            (snapshot.data!.data() as Map<String, dynamic>)
-                .containsKey('assignedTo') &&
-            snapshot.data!.get('assignedTo') == _auth.currentUser?.uid;
+            snapshot.data != null &&
+            snapshot.data!.containsKey('assignedTo') &&
+            snapshot.data!['assignedTo'] == _auth.currentUser?.uid;
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
@@ -346,118 +385,134 @@ class _HomeContentState extends State<HomeContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'رقم الطلب: $orderId',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'اسم العميل: $customerName',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  address,
-                  style: const TextStyle(fontSize: 16),
-                ),
-                if (isAssignedByAdmin && orderStatus == 'تم تجهيز الطلب')
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text(
-                      'تم تعيين هذا الطلب لك من قبل الإدارة',
-                      style: TextStyle(
-                        color: Colors.blue,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${AppStrings.orderNumber}$orderId',
+                      style: const TextStyle(
+                        fontSize: 16.0,
                         fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
                       ),
                     ),
+                    if (isAssignedByAdmin)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        child: Text(
+                          AppStrings.assignedByAdmin,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8.0),
+                Text(
+                  '${AppStrings.customerName}$customerName',
+                  style: const TextStyle(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.bold,
                   ),
-                const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 8.0),
+                Text(
+                  address,
+                  style: const TextStyle(fontSize: 14.0),
+                ),
+                if (isAssignedByAdmin) ...[
+                  const SizedBox(height: 8.0),
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8.0),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.admin_panel_settings,
+                          color: Colors.blue,
+                          size: 16.0,
+                        ),
+                        const SizedBox(width: 8.0),
+                        Text(
+                          AppStrings.assignedByAdminMessage,
+                          style: TextStyle(
+                            fontSize: 12.0,
+                            color: Colors.blue[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16.0),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => OrderDetailsScreen(
-                              orderId: orderId,
-                              userId: userId,
-                              onAccept: onAccept,
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.info_outline),
-                      label: const Text('عرض التفاصيل'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
-                      ),
-                    ),
-                    if (!isAccepted &&
-                        !isReceived &&
-                        !isInDelivery &&
-                        !isDelivered &&
-                        onAccept != null)
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _orderController.acceptOrder(
-                              orderId, _auth.currentUser!.uid);
-                        },
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: const Text('قبول الطلب'),
+                    if (!isAccepted && !isReceived && !isInDelivery && !isDelivered && (isAssignedByAdmin || onAccept != null))
+                      ElevatedButton(
+                        onPressed: onAccept,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: isAssignedByAdmin ? Colors.blue : Colors.green,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
+                              horizontal: 20.0, vertical: 12.0),
+                        ),
+                        child: Text(
+                          isAssignedByAdmin ? AppStrings.assignedByAdmin : AppStrings.acceptOrder,
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ),
-                    if (isAccepted &&
-                        !isReceived &&
-                        !isInDelivery &&
-                        !isDelivered)
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _orderController.confirmOrderReceived(orderId);
+                    if (isAccepted && !isReceived && !isInDelivery && !isDelivered)
+                      ElevatedButton(
+                        onPressed: () async {
+                          await _orderController.confirmOrderReceived(orderId);
+                          // Force immediate refresh after action
+                          setState(() {});
                         },
-                        icon: const Icon(Icons.shopping_bag),
-                        label: const Text('تم استلام الطلب'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
+                              horizontal: 20.0, vertical: 12.0),
+                        ),
+                        child: Text(
+                          AppStrings.confirmReceipt,
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ),
-                    if (isReceived && !isDelivered)
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _orderController.completeDelivery(orderId);
+                    if (isReceived && !isInDelivery && !isDelivered)
+                      ElevatedButton(
+                        onPressed: () async {
+                          await _orderController.completeDelivery(orderId);
+                          // Force immediate refresh after action
+                          setState(() {});
                         },
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text('تم التوصيل'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: Colors.blue,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
+                              horizontal: 20.0, vertical: 12.0),
+                        ),
+                        child: Text(
+                          AppStrings.confirmDelivery,
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ),
                     if (isDelivered)
-                      ElevatedButton.icon(
-                        onPressed: null,
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text('تم التوصيل'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
+                      Text(
+                        AppStrings.orderDelivered,
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                   ],

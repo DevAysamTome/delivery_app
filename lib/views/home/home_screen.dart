@@ -3,6 +3,7 @@ import 'package:delivery_app/views/home/home_content.dart';
 import 'package:delivery_app/views/order_view/order_screen.dart';
 import 'package:delivery_app/views/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:delivery_app/res/constants/app_strings.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,9 +17,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
-    HomeContent(), // قم بإنشاء HomeContent للشاشة الرئيسية
-    OrdersScreen(),
-    SettingsScreen(),
+    const HomeContent(), // قم بإنشاء HomeContent للشاشة الرئيسية
+    const OrdersScreen(),
+    const SettingsScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -31,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الطلبات', style: TextStyle(color: Colors.white)),
+        title: Text(AppStrings.orders, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.redAccent,
         centerTitle: true,
         automaticallyImplyLeading: false,
@@ -46,18 +47,18 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onItemTapped,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'الرئيسية',
+            icon: const Icon(Icons.home),
+            label: AppStrings.home,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.local_shipping),
-            label: 'الطلبات',
+            icon: const Icon(Icons.local_shipping),
+            label: AppStrings.orders,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'الاعدادات',
+            icon: const Icon(Icons.person),
+            label: AppStrings.settings,
           ),
         ],
         selectedItemColor: Colors.redAccent,

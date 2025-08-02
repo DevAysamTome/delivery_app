@@ -1,8 +1,9 @@
 import 'package:delivery_app/views/order_details/order_details_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:delivery_app/services/api_service.dart';
+import 'package:delivery_app/models/order.dart';
 
 class CompleteOrder extends StatefulWidget {
   const CompleteOrder({super.key});
@@ -52,14 +53,19 @@ class _CompleteOrderState extends State<CompleteOrder> {
     return RefreshIndicator(
       key: _refreshKey,
       onRefresh: _refreshOrders,
-      child: StreamBuilder(
-        stream: FirebaseFirestore.instance
-            .collection('orders')
-            .where('orderStatus', isEqualTo: 'تم التوصيل')
-            .where('deliveryOption', isEqualTo: 'delivery')
-            .where('assignedTo', isEqualTo: deliveryWorkerId)
-            .snapshots(),
-        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+      child: StreamBuilder<List<Order>>(
+        stream: Stream.periodic(const Duration(seconds: 10), (_) async {
+          try {
+            return await ApiService.getOrdersByStatusAndWorker(
+              ['تم التوصيل'],
+              deliveryWorkerId!,
+            );
+          } catch (e) {
+            print('Error fetching completed orders: $e');
+            return <Order>[];
+          }
+        }).asyncMap((future) => future),
+        builder: (context, AsyncSnapshot<List<Order>> snapshot) {
           if (snapshot.hasError) {
             return Center(
               child: Column(
@@ -80,7 +86,7 @@ class _CompleteOrderState extends State<CompleteOrder> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          var orders = snapshot.data!.docs;
+          var orders = snapshot.data ?? [];
 
           if (orders.isEmpty) {
             return Center(
@@ -100,107 +106,123 @@ class _CompleteOrderState extends State<CompleteOrder> {
             );
           }
 
+          // Sort orders by completion date in descending order
+          orders.sort((a, b) {
+            final dateA = a.updatedAt ?? DateTime(0);
+            final dateB = b.updatedAt ?? DateTime(0);
+            return dateB.compareTo(dateA);
+          });
+
           return ListView.builder(
             padding: const EdgeInsets.all(16.0),
             itemCount: orders.length,
             itemBuilder: (context, index) {
-              var order = orders[index].data() as Map<String, dynamic>;
-              var orderDate = (order['timestamp'] as Timestamp).toDate();
-              var formattedDate = intl.DateFormat('dd/MM/yyyy - HH:mm').format(orderDate);
+              final order = orders[index];
+              return _buildOrderCard(order);
+            },
+          );
+        },
+      ),
+    );
+  }
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16.0),
-                elevation: 4.0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0),
+  Widget _buildOrderCard(Order order) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      elevation: 4.0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'رقم الطلب: ${order.orderId}',
+                  style: const TextStyle(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.redAccent,
+                  ),
                 ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12.0),
-                  onTap: () {
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  child: const Text(
+                    'تم التوصيل',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8.0),
+            FutureBuilder<String>(
+              future: ApiService.getCustomerName(order.userId),
+              builder: (context, snapshot) {
+                return Text(
+                  'اسم العميل: ${snapshot.data ?? 'جاري التحميل...'}',
+                  style: const TextStyle(fontSize: 14.0),
+                );
+              },
+            ),
+            const SizedBox(height: 8.0),
+            Text(
+              'العنوان: ${order.deliveryAddress ?? 'غير متوفر'}',
+              style: const TextStyle(fontSize: 14.0),
+            ),
+            const SizedBox(height: 8.0),
+            Text(
+              'التكلفة الإجمالية: ${order.totalPrice.toStringAsFixed(2)} شيكل',
+              style: const TextStyle(
+                fontSize: 14.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (order.updatedAt != null) ...[
+              const SizedBox(height: 8.0),
+              Text(
+                'تاريخ التوصيل: ${intl.DateFormat('yyyy/MM/dd HH:mm').format(order.updatedAt!)}',
+                style: const TextStyle(fontSize: 12.0, color: Colors.grey),
+              ),
+            ],
+            const SizedBox(height: 16.0),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => OrderDetailsScreen(
-                          orderId: orders[index].id,
-                          userId: order['userId'],
+                          orderId: order.orderId.toString() ,
+                          userId: order.userId,
                         ),
                       ),
                     );
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'طلب #${order['orderId']}',
-                              style: const TextStyle(
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12.0,
-                                vertical: 6.0,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.purple[100],
-                                borderRadius: BorderRadius.circular(20.0),
-                              ),
-                              child: Text(
-                                order['orderStatus'],
-                                style: TextStyle(
-                                  color: Colors.purple[900],
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12.0),
-                        Row(
-                          children: [
-                            const Icon(Icons.access_time, size: 16.0, color: Colors.grey),
-                            const SizedBox(width: 8.0),
-                            Text(
-                              formattedDate,
-                              style: const TextStyle(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12.0),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'المبلغ الإجمالي',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 16.0,
-                              ),
-                            ),
-                            Text(
-                              '\$${order['totalPrice']}',
-                              style: const TextStyle(
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.purple,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  icon: const Icon(Icons.info_outline),
+                  label: const Text('عرض التفاصيل'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                   ),
                 ),
-              );
-            },
-          );
-        },
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

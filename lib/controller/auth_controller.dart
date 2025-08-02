@@ -1,40 +1,40 @@
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
+import '../models/delivery_person.dart';
 
 class AuthController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
   Future<User?> signIn(
       String email, String password, BuildContext context) async {
     try {
+      print('[AuthController] Attempting Firebase sign-in for $email');
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       User? user = userCredential.user;
+      print('[AuthController] Firebase sign-in result: user=${user?.uid}');
 
       if (user != null) {
-        DocumentSnapshot userDoc =
-            await _firestore.collection('users').doc(user.uid).get();
-
-        if (userDoc.exists && userDoc.data() != null) {
-          Map<String, dynamic> userData =
-              userDoc.data() as Map<String, dynamic>;
-
-          print("User role: ${userData['role']}");
-          if (userData['role'] == 'delivery') {
+        // Check if user is a delivery worker using MongoDB API
+        try {
+          print('[AuthController] Checking delivery worker in backend for UID: ${user.uid}');
+          final deliveryWorker = await ApiService.getDeliveryWorker(user.uid);
+          print('[AuthController] Delivery worker lookup result: $deliveryWorker');
+          
+          if (deliveryWorker != null) {
             SharedPreferences prefs = await SharedPreferences.getInstance();
             await prefs.setString('deliveryWorkerId', user.uid);
-            await prefs.setBool('isLoggedIn', true); // حفظ حالة تسجيل الدخول
+            await prefs.setBool('isLoggedIn', true);
 
             String? token;
 
@@ -87,11 +87,11 @@ class AuthController {
 
             print("Token used for push notifications: $token");
 
-            // التحقق من إذن الموقع وتحديثه
+            // Check location permission and update it
             await _checkLocationPermission(context);
             await _updateLocation(user.uid);
 
-            // إذا فشل الحصول على الموقع، إظهار رسالة توضيحية
+            // If location service is disabled, show error message
             if (!await _locationEnabled()) {
               _showLocationError(context);
               return null;
@@ -99,15 +99,14 @@ class AuthController {
 
             _startLocationUpdates(user.uid);
 
-            // Store FCM or APNs token in Firestore
-            await _firestore.collection('deliveryWorkers').doc(user.uid).set({
-              'fcmToken': token,
-            }, SetOptions(merge: true));
+            // Store FCM or APNs token in MongoDB
+            await ApiService.updateDeliveryWorkerToken(user.uid, token ?? '');
 
-            // توجيه المستخدم إلى الشاشة الرئيسية بعد تسجيل الدخول بنجاح
+            // Navigate to home screen after successful login
             Navigator.pushReplacementNamed(context, '/home');
             return user;
           } else {
+            print('[AuthController] Access denied: No delivery worker found for UID: ${user.uid}');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Access denied. User is not a delivery worker.'),
@@ -116,17 +115,18 @@ class AuthController {
             await _auth.signOut();
             return null;
           }
-        } else {
+        } catch (e) {
+          print("[AuthController] Error checking delivery worker status: $e");
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('User document does not exist or is empty.'),
+            SnackBar(
+              content: Text('Error checking user permissions: $e'),
             ),
           );
           return null;
         }
       }
     } catch (e) {
-      print("Error during sign-in: $e");
+      print("[AuthController] Error during sign-in: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('An error occurred: $e'),
@@ -134,6 +134,8 @@ class AuthController {
       );
       return null;
     }
+    print('[AuthController] signIn() reached end without returning user.');
+    return null;
   }
 
   Future<void> _checkLocationPermission(BuildContext context) async {
@@ -161,13 +163,19 @@ class AuthController {
   }
 
   Future<void> _updateLocation(String uid) async {
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
 
-    await _firestore.collection('deliveryWorkers').doc(uid).set({
-      'latitude': position.latitude,
-      'longitude': position.longitude,
-    }, SetOptions(merge: true));
+      await ApiService.updateDeliveryWorkerLocation(
+        uid,
+        position.latitude,
+        position.longitude,
+      );
+    } catch (e) {
+      print("Error updating location: $e");
+      rethrow;
+    }
   }
 
   Future<bool> _locationEnabled() async {
@@ -188,12 +196,13 @@ class AuthController {
     Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 10, // المسافة بالامتار لتحديث الموقع
+      distanceFilter: 10, // Distance in meters to update location
     )).listen((Position position) {
-      _firestore.collection('deliveryWorkers').doc(uid).set({
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-      }, SetOptions(merge: true));
+      ApiService.updateDeliveryWorkerLocation(
+        uid,
+        position.latitude,
+        position.longitude,
+      );
     });
   }
 }

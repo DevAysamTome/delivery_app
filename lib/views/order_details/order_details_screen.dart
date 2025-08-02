@@ -1,11 +1,11 @@
 import 'package:delivery_app/controller/order_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:delivery_app/views/order_details/map_screen.dart';
+import '../../services/api_service.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final String orderId;
@@ -24,7 +24,7 @@ class OrderDetailsScreen extends StatefulWidget {
 
 class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   final OrderController orderController = OrderController();
-  late GoogleMapController mapController;
+  GoogleMapController? mapController;
   LocationData? currentLocation;
   List<LatLng> polylineCoordinates = [];
   late LatLng destination;
@@ -38,22 +38,25 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    print('OrderDetailsScreen initialized with orderId: ${widget.orderId}');
+    print('OrderDetailsScreen initialized with userId: ${widget.userId}');
     getCurrentLocation();
-    checkOrderStatus();
-    // Start location updates
+    // Remove checkOrderStatus() call since we're using StreamBuilder now
+    // Start location updates with throttling
     location.onLocationChanged.listen((LocationData currentLocation) {
       if (_isTracking && !_isManualControl && mounted) {
+        // Only update every 5 seconds to reduce unnecessary refreshes
         setState(() {
           this.currentLocation = currentLocation;
-          updateMapCamera();
+          // Don't update map camera on every location change to reduce CPU usage
         });
       }
     });
   }
 
   void updateMapCamera() {
-    if (currentLocation != null && mapController != null) {
-      mapController.animateCamera(
+    if (currentLocation != null && mapController != null && _isTracking) {
+      mapController!.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
             target: LatLng(
@@ -85,14 +88,11 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   Future<void> checkOrderStatus() async {
     try {
-      DocumentSnapshot orderDoc = await FirebaseFirestore.instance
-          .collection('orders')
-          .doc(widget.orderId)
-          .get();
-      
-      if (orderDoc.exists) {
+      // Use ApiService to get store order details
+      final storeOrders = await ApiService.getStoreOrdersByMainOrderIdRaw(int.parse(widget.orderId));
+      if (storeOrders.isNotEmpty) {
+        final orderStatus = storeOrders.first['orderStatus'] as String? ?? '';
         setState(() {
-          final orderStatus = orderDoc['orderStatus'] as String? ?? '';
           isOrderAccepted = orderStatus == 'تم التوصيل';
           isOrderReceived = orderStatus == 'تم التوصيل';
         });
@@ -153,54 +153,37 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       );
       Navigator.pop(context);
     } catch (e) {
+      print('Error completing delivery: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('حدث خطأ أثناء تحديث حالة الطلب')),
       );
     }
   }
 
+  Future<Map<String, dynamic>?> getStoreById(String storeId) async {
+    // Try restaurant
+    final restaurant = await ApiService.getStoreDetails(storeId, 'restaurants');
+    if (restaurant != null) return restaurant;
+    // Try beverage store
+    final beverage = await ApiService.getStoreDetails(storeId, 'beveragestores');
+    if (beverage != null) return beverage;
+    // Try sweet store
+    final sweet = await ApiService.getStoreDetails(storeId, 'sweetstores');
+    if (sweet != null) return sweet;
+    return null;
+  }
+
   Future<String> getStoreName(String storeId) async {
     if (storeNames.containsKey(storeId)) {
       return storeNames[storeId]!;
     }
-    
     try {
-      // Check restaurant collection
-      DocumentSnapshot restaurantDoc = await FirebaseFirestore.instance
-          .collection('restaurants')
-          .doc(storeId)
-          .get();
-      
-      if (restaurantDoc.exists) {
-        String storeName = restaurantDoc['name'] as String? ?? 'متجر غير معروف';
+      final store = await getStoreById(storeId);
+      if (store != null) {
+        String storeName = store['name'] as String? ?? 'متجر غير معروف';
         storeNames[storeId] = storeName;
         return storeName;
       }
-
-      // Check beverage store collection
-      DocumentSnapshot beverageDoc = await FirebaseFirestore.instance
-          .collection('beverageStores')
-          .doc(storeId)
-          .get();
-      
-      if (beverageDoc.exists) {
-        String storeName = beverageDoc['name'] as String? ?? 'متجر غير معروف';
-        storeNames[storeId] = storeName;
-        return storeName;
-      }
-
-      // Check sweet store collection
-      DocumentSnapshot sweetDoc = await FirebaseFirestore.instance
-          .collection('sweetStore')
-          .doc(storeId)
-          .get();
-      
-      if (sweetDoc.exists) {
-        String storeName = sweetDoc['name'] as String? ?? 'متجر غير معروف';
-        storeNames[storeId] = storeName;
-        return storeName;
-      }
-
       return 'متجر غير معروف';
     } catch (e) {
       print('Error fetching store name: $e');
@@ -220,35 +203,120 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               ),
               centerTitle: true,
               backgroundColor: Colors.redAccent,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Colors.white),
+                  onPressed: () {
+                    setState(() {
+                      // Force refresh by triggering a rebuild
+                    });
+                  },
+                  tooltip: 'تحديث',
+                ),
+              ],
             ),
-            body: FutureBuilder<QuerySnapshot>(
-              future: FirebaseFirestore.instance
-                  .collection('orders')
-                  .doc(widget.orderId)
-                  .collection('storeOrders')
-                  .get(),
+            body: FutureBuilder<List<Map<String, dynamic>>>(
+              future: () async {
+                print('Fetching order details for orderId: ${widget.orderId}');
+                try {
+                  // Try the store orders API first
+                  final result = await ApiService.getStoreOrdersByMainOrderIdRaw(int.parse(widget.orderId));
+                  print('Order details result: ${result.length} items');
+                  if (result.isNotEmpty) {
+                    print('First item: ${result.first}');
+                    return result;
+                  } else {
+                    print('No store orders found, trying main order API...');
+                    // Fallback: try to get the main order
+                    final order = await ApiService.getOrderById(widget.orderId);
+                    print('Main order found: ${order.toJson()}');
+                    
+                    // Convert to store order format
+                    return [{
+                      'storeId': order.storeId,
+                      'items': order.items,
+                      'totalPrice': order.totalPrice,
+                      'status': order.orderStatus,
+                      'deliveryDetails': {
+                        'address': order.deliveryAddress,
+                        'cost': order.deliveryCost,
+                        'location': order.deliveryLocation,
+                      },
+                    }];
+                  }
+                } catch (e) {
+                  print('Error in FutureBuilder: $e');
+                  rethrow;
+                }
+              }(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
                 if (snapshot.hasError) {
-                  return Center(child: Text('حدث خطأ: ${snapshot.error}'));
+                  print('[OrderDetailsScreen] Error loading order details: ${snapshot.error}');
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text(
+                          'حدث خطأ في تحميل تفاصيل الطلب',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${snapshot.error}',
+                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'رقم الطلب: ${widget.orderId}',
+                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('الطلب غير موجود'));
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.search_off, size: 64, color: Colors.orange),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'الطلب غير موجود',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'رقم الطلب: ${widget.orderId}',
+                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              // Force refresh
+                            });
+                          },
+                          child: const Text('إعادة المحاولة'),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
-                // استرداد مستندات storeOrders
-                final storeOrdersDocs = snapshot.data!.docs;
+                // Get store orders data
+                final storeOrdersData = snapshot.data!;
                 
-                if (storeOrdersDocs.isEmpty) {
-                  return const Center(child: Text('لا توجد تفاصيل للطلب'));
-                }
-
                 // Get delivery details from the first store order (since delivery details are the same for all)
-                final firstStoreOrder = storeOrdersDocs.first;
+                final firstStoreOrder = storeOrdersData.first;
                 final deliveryDetails = firstStoreOrder['deliveryDetails'] as Map<String, dynamic>?;
                 final location = deliveryDetails?['location'] as Map<String, dynamic>?;
                 final latitude = location?['latitude'] as double? ?? 0.0;
@@ -257,11 +325,15 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
                 // Calculate total price from all store orders
                 double totalPrice = 0;
-                for (var storeOrder in storeOrdersDocs) {
+                for (var storeOrder in storeOrdersData) {
                   totalPrice += (storeOrder['totalPrice'] as num?)?.toDouble() ?? 0;
                 }
                 // Add delivery cost
                 totalPrice += (deliveryDetails?['cost'] as num?)?.toDouble() ?? 0;
+
+                // Get delivery address
+                final deliveryAddress = deliveryDetails?['address'] as String? ?? 'غير متوفر';
+                final deliveryCost = (deliveryDetails?['cost'] as num?)?.toDouble() ?? 0.0;
 
                 // يمكن عرض البيانات الآن
                 return FutureBuilder<String>(
@@ -352,12 +424,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
-                                          'العنوان: ${deliveryDetails?['address'] ?? 'غير متوفر'}',
+                                          'العنوان: $deliveryAddress',
                                           style: const TextStyle(fontSize: 16),
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
-                                          'تكلفة التوصيل: ${deliveryDetails?['cost'] ?? 0} شيكل',
+                                          'تكلفة التوصيل: ${deliveryCost.toStringAsFixed(2)} شيكل',
                                           style: const TextStyle(fontSize: 16),
                                         ),
                                         const SizedBox(height: 8),
@@ -369,34 +441,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                             color: Colors.redAccent,
                                           ),
                                         ),
-                                        if ((firstStoreOrder.data() as Map<String, dynamic>?)?.containsKey('notes') == true && 
-                                            firstStoreOrder['notes'] != null && 
-                                            firstStoreOrder['notes'].toString().isNotEmpty)
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              const SizedBox(height: 8),
-                                              const Text(
-                                                'ملاحظات العميل:',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Container(
-                                                padding: const EdgeInsets.all(8.0),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.grey[100],
-                                                  borderRadius: BorderRadius.circular(8.0),
-                                                ),
-                                                child: Text(
-                                                  firstStoreOrder['notes'],
-                                                  style: const TextStyle(fontSize: 16),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
                                       ],
                                     ),
                                   ),
@@ -408,9 +452,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                 ),
                                 const SizedBox(height: 10),
                                 // Store Orders
-                                ...storeOrdersDocs.map((storeOrder) {
+                                ...storeOrdersData.map((storeOrder) {
                                   final items = storeOrder['items'] as List<dynamic>? ?? [];
                                   final storeTotal = (storeOrder['totalPrice'] as num?)?.toDouble() ?? 0;
+                                  final storeId = storeOrder['storeId'] as String? ?? '';
                                   
                                   return Card(
                                     elevation: 4,
@@ -421,7 +466,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           FutureBuilder<String>(
-                                            future: getStoreName(storeOrder['storeId']),
+                                            future: getStoreName(storeId),
                                             builder: (context, storeSnapshot) {
                                               return Text(
                                                 storeSnapshot.data ?? 'جاري التحميل...',
@@ -435,6 +480,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                           ),
                                           const SizedBox(height: 8),
                                           ...items.map((item) {
+                                            print( item['mealName']);
                                             return Padding(
                                               padding: const EdgeInsets.symmetric(vertical: 8.0),
                                               child: Column(
@@ -479,7 +525,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'العنوان: ${deliveryDetails?['address'] ?? 'غير متوفر'}',
+                                          'العنوان: $deliveryAddress',
                                           style: const TextStyle(fontSize: 16),
                                         ),
                                         const SizedBox(height: 16),
@@ -518,14 +564,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                   children: [
-                                    
-                                    if (!isOrderAccepted && !isOrderReceived )
+                                    if (!isOrderAccepted && !isOrderReceived)
                                       ElevatedButton.icon(
-                                        onPressed: null,
+                                        onPressed: acceptOrder,
                                         icon: const Icon(Icons.check_circle),
                                         label: const Text('تم التوصيل'),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.grey,
+                                          backgroundColor: Colors.green,
                                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                                         ),
                                       ),
