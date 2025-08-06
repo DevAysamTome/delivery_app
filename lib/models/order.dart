@@ -2,7 +2,7 @@ import 'dart:convert';
 
 class Order {
   final String? id; // MongoDB _id
-  final int orderId; // Sequential order number
+  final dynamic orderId; // Sequential order number (can be string or int)
   final String orderStatus;
   final String storeId;
   final String userId;
@@ -50,7 +50,7 @@ class Order {
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
       id: json['_id'],
-      orderId: json['orderId'] ?? 0,
+      orderId: json['orderId'], // Keep as dynamic (string or int)
       orderStatus: json['orderStatus'] ?? '',
       storeId: json['storeId'] ?? '',
       userId: json['userId'] ?? '',
@@ -107,7 +107,7 @@ class Order {
 
   Order copyWith({
     String? id,
-    int? orderId,
+    dynamic orderId,
     String? orderStatus,
     String? storeId,
     String? userId,

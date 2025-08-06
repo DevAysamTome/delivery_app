@@ -1,25 +1,74 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import '../services/api_service.dart';
 import '../models/order.dart';
+import 'dart:convert'; // Added for json.decode
 
 class OrderController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   Timer? _pollingTimer;
   final StreamController<void> _refreshController = StreamController<void>.broadcast();
 
-  // Stream for new orders count
+  // Get current location
+  Future<Position?> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('Location services are disabled.');
+        return null;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print('Location permissions are denied');
+          return null;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        print('Location permissions are permanently denied');
+        return null;
+      }
+
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    } catch (e) {
+      print('Error getting current location: $e');
+      return null;
+    }
+  }
+
+  // Stream for new orders count (with location-based filtering)
   Stream<int> getNewOrdersCount() {
     return Stream.periodic(const Duration(seconds: 8), (_) async {
       try {
         final currentUserId = _auth.currentUser?.uid;
         if (currentUserId == null) return 0;
         
+        // Get current location
+        final position = await _getCurrentLocation();
+        if (position == null) {
+          // Fallback to regular orders if location not available
+          final orders = await ApiService.getOrdersByStatusAndWorker(
+            ['تم تجهيز الطلب', 'قيد الانتظار'],
+            currentUserId,
+          );
+          return orders.length;
+        }
+
+        // Use nearby orders with location
         final orders = await ApiService.getOrdersByStatusAndWorker(
           ['تم تجهيز الطلب', 'قيد الانتظار'],
           currentUserId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          radiusInKm: 5.0,
         );
         return orders.length;
       } catch (e) {
@@ -29,16 +78,31 @@ class OrderController {
     }).asyncMap((future) => future);
   }
 
-  // Stream for new in-progress orders count
+  // Stream for new in-progress orders count (with location-based filtering)
   Stream<int> getNewInProgressOrdersCount() {
     return Stream.periodic(const Duration(seconds: 8), (_) async {
       try {
         final currentUserId = _auth.currentUser?.uid;
         if (currentUserId == null) return 0;
         
+        // Get current location
+        final position = await _getCurrentLocation();
+        if (position == null) {
+          // Fallback to regular orders if location not available
+          final orders = await ApiService.getOrdersByStatusAndWorker(
+            ['تم تجهيز الطلب', 'قيد الانتظار'],
+            currentUserId,
+          );
+          return orders.length;
+        }
+
+        // Use nearby orders with location
         final orders = await ApiService.getOrdersByStatusAndWorker(
           ['تم تجهيز الطلب', 'قيد الانتظار'],
           currentUserId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          radiusInKm: 5.0,
         );
         return orders.length;
       } catch (e) {
@@ -48,16 +112,31 @@ class OrderController {
     }).asyncMap((future) => future);
   }
 
-  // Stream for ongoing in-progress orders count
+  // Stream for ongoing in-progress orders count (with location-based filtering)
   Stream<int> getOnGoingInProgressOrdersCount() {
     return Stream.periodic(const Duration(seconds: 8), (_) async {
       try {
         final currentUserId = _auth.currentUser?.uid;
         if (currentUserId == null) return 0;
         
+        // Get current location
+        final position = await _getCurrentLocation();
+        if (position == null) {
+          // Fallback to regular orders if location not available
+          final orders = await ApiService.getOrdersByStatusAndWorker(
+            ['جاري التوصيل'],
+            currentUserId,
+          );
+          return orders.length;
+        }
+
+        // Use nearby orders with location
         final orders = await ApiService.getOrdersByStatusAndWorker(
           ['جاري التوصيل'],
           currentUserId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          radiusInKm: 5.0,
         );
         return orders.length;
       } catch (e) {
@@ -67,16 +146,31 @@ class OrderController {
     }).asyncMap((future) => future);
   }
 
-  // Get orders by status
+  // Get orders by status (with location-based filtering)
   Stream<List<Order>> getOrdersByStatus(String status) {
     return Stream.periodic(const Duration(seconds: 8), (_) async {
       try {
         final currentUserId = _auth.currentUser?.uid;
         if (currentUserId == null) return <Order>[];
         
+        // Get current location
+        final position = await _getCurrentLocation();
+        if (position == null) {
+          // Fallback to regular orders if location not available
+          final orders = await ApiService.getOrdersByStatusAndWorker(
+            [status, 'قيد الانتظار'],
+            currentUserId,
+          );
+          return orders;
+        }
+
+        // Use nearby orders with location
         final orders = await ApiService.getOrdersByStatusAndWorker(
           [status, 'قيد الانتظار'],
           currentUserId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          radiusInKm: 5.0,
         );
         return orders;
       } catch (e) {
@@ -86,7 +180,7 @@ class OrderController {
     }).asyncMap((future) => future);
   }
 
-  // Get orders details with main fields
+  // Get orders details with main fields (with location-based filtering)
   Stream<Map<String, dynamic>> getOrdersDetailsWithMainFields() {
     return Stream.periodic(const Duration(seconds: 8), (_) async {
       try {
@@ -97,8 +191,25 @@ class OrderController {
           };
         }
 
-        // Get all orders that are ready for delivery or pending
-        final allOrders = await ApiService.getAllOrders();
+        // Get current location
+        final position = await _getCurrentLocation();
+        List<Order> allOrders;
+
+        if (position != null) {
+          // Use nearby orders with location
+          print('[OrderController] Using nearby orders with location: ${position.latitude}, ${position.longitude}');
+          allOrders = await ApiService.getNearbyOrders(
+            latitude: position.latitude,
+            longitude: position.longitude,
+            radiusInKm: 5.0,
+            deliveryWorkerId: currentUserId,
+            status: 'قيد الانتظار', // Use pending status for nearby orders
+          );
+        } else {
+          // Fallback to regular orders if location not available
+          print('[OrderController] Using regular orders (location not available)');
+          allOrders = await ApiService.getOrders();
+        }
         
         if (allOrders.isEmpty) {
           return {
@@ -170,13 +281,28 @@ class OrderController {
     return prefs.getString('deliveryWorkerId');
   }
 
-  // Get assigned orders
+  // Get assigned orders (with location-based filtering)
   Stream<List<Order>> getAssignedOrders(String deliveryWorkerId) {
     return Stream.periodic(const Duration(seconds: 8), (_) async {
       try {
+        // Get current location
+        final position = await _getCurrentLocation();
+        if (position == null) {
+          // Fallback to regular orders if location not available
+          final orders = await ApiService.getOrdersByStatusAndWorker(
+            ['جاري التوصيل'],
+            deliveryWorkerId,
+          );
+          return orders;
+        }
+
+        // Use nearby orders with location
         final orders = await ApiService.getOrdersByStatusAndWorker(
           ['جاري التوصيل'],
           deliveryWorkerId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          radiusInKm: 5.0,
         );
         return orders;
       } catch (e) {
@@ -186,15 +312,29 @@ class OrderController {
     }).asyncMap((future) => future);
   }
 
-  // Fetch assigned orders
+  // Fetch assigned orders (with location-based filtering)
   Stream<List<Order>> fetchAssignedOrders() {
     return Stream.periodic(const Duration(seconds: 8), (_) async {
       try {
         String? deliveryWorkerId = await getDeliveryWorkerId();
         if (deliveryWorkerId != null) {
+          // Get current location
+          final position = await _getCurrentLocation();
+          if (position == null) {
+            // Fallback to regular orders if location not available
+            return await ApiService.getOrdersByStatusAndWorker(
+              ['جاري التوصيل'],
+              deliveryWorkerId,
+            );
+          }
+
+          // Use nearby orders with location
           return await ApiService.getOrdersByStatusAndWorker(
             ['جاري التوصيل'],
             deliveryWorkerId,
+            latitude: position.latitude,
+            longitude: position.longitude,
+            radiusInKm: 5.0,
           );
         } else {
           print('Error: No delivery worker ID found.');
@@ -207,15 +347,131 @@ class OrderController {
     }).asyncMap((future) => future);
   }
 
-  // Accept order
-  Future<void> acceptOrder(String orderId, String deliveryWorkerId) async {
+  // Get pending orders (with location-based filtering)
+  Stream<List<Order>> getPendingOrders() {
+    return Stream.periodic(const Duration(seconds: 8), (_) async {
+      try {
+        final currentUserId = _auth.currentUser?.uid;
+        if (currentUserId == null) return <Order>[];
+        
+        // Get current location
+        final position = await _getCurrentLocation();
+        if (position == null) {
+          // Fallback to regular orders if location not available
+          final orders = await ApiService.getOrdersByStatusAndWorker(
+            ['قيد الانتظار'],
+            currentUserId,
+          );
+          return orders;
+        }
+
+        // Use nearby orders with location
+        final orders = await ApiService.getOrdersByStatusAndWorker(
+          ['قيد الانتظار'],
+          currentUserId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          radiusInKm: 5.0,
+        );
+        return orders;
+      } catch (e) {
+        print('Error getting pending orders: $e');
+        return <Order>[];
+      }
+    }).asyncMap((future) => future);
+  }
+
+  // Get ready orders (with location-based filtering)
+  Stream<List<Order>> getReadyOrders() {
+    return Stream.periodic(const Duration(seconds: 8), (_) async {
+      try {
+        final currentUserId = _auth.currentUser?.uid;
+        if (currentUserId == null) return <Order>[];
+        
+        // Get current location
+        final position = await _getCurrentLocation();
+        if (position == null) {
+          // Fallback to regular orders if location not available
+          final orders = await ApiService.getOrdersByStatusAndWorker(
+            ['تم تجهيز الطلب'],
+            currentUserId,
+          );
+          return orders;
+        }
+
+        // Use nearby orders with location
+        final orders = await ApiService.getOrdersByStatusAndWorker(
+          ['تم تجهيز الطلب'],
+          currentUserId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          radiusInKm: 5.0,
+        );
+        return orders;
+      } catch (e) {
+        print('Error getting ready orders: $e');
+        return <Order>[];
+      }
+    }).asyncMap((future) => future);
+  }
+
+  // Get completed orders (without location filtering)
+  Stream<List<Order>> getCompletedOrders() {
+    return Stream.periodic(const Duration(seconds: 8), (_) async {
+      try {
+        final currentUserId = _auth.currentUser?.uid;
+        if (currentUserId == null) return <Order>[];
+        
+        print('[OrderController] Getting completed orders for worker: $currentUserId');
+        
+        // Get all orders and filter by status and worker
+        final response = await ApiService.getOrders();
+        
+        // Filter by status and worker
+        final completedOrders = response.where((order) {
+          final statusMatch = order.orderStatus == 'تم التوصيل';
+          final workerMatch = order.assignedTo == currentUserId;
+          return statusMatch && workerMatch;
+        }).toList();
+        
+        print('[OrderController] Found ${response.length} total orders, ${completedOrders.length} completed orders for worker $currentUserId');
+        return completedOrders;
+      } catch (e) {
+        print('Error getting completed orders: $e');
+        return <Order>[];
+      }
+    }).asyncMap((future) => future);
+  }
+
+  // Update order status
+  Future<void> updateOrderStatus(String orderId, String newStatus) async {
     try {
-      await ApiService.acceptOrder(orderId, deliveryWorkerId);
-      print('Order accepted successfully, triggering immediate refresh');
-      refreshOrders();
+      await ApiService.updateOrder(orderId, Order(
+        orderId: orderId,
+        orderStatus: newStatus,
+        storeId: '',
+        userId: '',
+        totalPrice: 0,
+        items: [],
+        placeName: '',
+        selectedAddOns: [],
+      ));
+    } catch (e) {
+      print('Error updating order status: $e');
+      throw e;
+    }
+  }
+
+  // Accept order
+  Future<void> acceptOrder(String orderId) async {
+    try {
+      final currentUserId = _auth.currentUser?.uid;
+      if (currentUserId == null) throw Exception('User not authenticated');
+
+      await ApiService.acceptOrder(orderId, currentUserId);
     } catch (e) {
       print('Error accepting order: $e');
-      rethrow;
+      throw e;
     }
   }
 
@@ -257,7 +513,7 @@ class OrderController {
     _pollingTimer = null;
   }
 
-  // Trigger immediate refresh
+  // Refresh orders
   void refreshOrders() {
     _refreshController.add(null);
   }

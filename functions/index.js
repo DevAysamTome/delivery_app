@@ -1,5 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const { MongoClient, ObjectId } = require('mongodb');
 
 // Function to handle the initial timer creation
 exports.handleDeliveryTimer = functions.firestore
@@ -9,12 +10,23 @@ exports.handleDeliveryTimer = functions.firestore
         const orderId = timerData.orderId;
         const scheduledTime = timerData.scheduledTime.toDate();
 
-        // Schedule the status update
-        await admin.firestore().collection('scheduled_updates').doc(orderId).set({
-            'orderId': orderId,
-            'scheduledTime': scheduledTime,
-            'status': 'pending'
-        });
+        try {
+            // Connect to MongoDB
+            const mongoClient = new MongoClient(process.env.MONGODB_URI);
+            await mongoClient.connect();
+            const db = mongoClient.db();
+
+            // Schedule the status update in MongoDB
+            await db.collection('scheduled_updates').insertOne({
+                'orderId': orderId,
+                'scheduledTime': scheduledTime,
+                'status': 'pending'
+            });
+
+            await mongoClient.close();
+        } catch (error) {
+            console.error('Error creating scheduled update:', error);
+        }
 
         return null;
     });
@@ -23,38 +35,66 @@ exports.handleDeliveryTimer = functions.firestore
 exports.processScheduledUpdates = functions.pubsub
     .schedule('every 1 minutes')
     .onRun(async (context) => {
-        const now = admin.firestore.Timestamp.now();
-        
-        // Get all pending updates that are due
-        const updates = await admin.firestore()
-            .collection('scheduled_updates')
-            .where('status', '==', 'pending')
-            .where('scheduledTime', '<=', now)
-            .get();
+        try {
+            // Connect to MongoDB
+            const mongoClient = new MongoClient(process.env.MONGODB_URI);
+            await mongoClient.connect();
+            const db = mongoClient.db();
 
-        // Process each update
-        const batch = admin.firestore().batch();
-        
-        for (const doc of updates.docs) {
-            const data = doc.data();
-            const orderId = data.orderId;
+            const now = new Date();
+            
+            // Get all pending updates that are due
+            const updates = await db.collection('scheduled_updates')
+                .find({ 
+                    status: 'pending',
+                    scheduledTime: { $lte: now }
+                })
+                .toArray();
 
-            // Update the order status
-            const orderRef = admin.firestore().collection('orders').doc(orderId);
-            batch.update(orderRef, {
-                'orderStatus': 'جاري التوصيل',
-                'deliveryStartedAt': now
-            });
+            // Process each update
+            for (const update of updates) {
+                const orderId = update.orderId;
 
-            // Mark the scheduled update as completed
-            batch.update(doc.ref, {
-                'status': 'completed',
-                'processedAt': now
-            });
+                // Build query conditions
+                const queryConditions = [
+                  { orderId: parseInt(orderId) },
+                  { orderId: orderId }
+                ];
+
+                // Only add ObjectId condition if it's a valid ObjectId format
+                if (ObjectId.isValid(orderId)) {
+                  queryConditions.push({ _id: new ObjectId(orderId) });
+                }
+
+                // Update the order status in MongoDB
+                await db.collection('orders').updateOne(
+                  { 
+                    $or: queryConditions
+                  },
+                  {
+                    $set: {
+                      'orderStatus': 'جاري التوصيل',
+                      'deliveryStartedAt': now
+                    }
+                  }
+                );
+
+                // Mark the scheduled update as completed
+                await db.collection('scheduled_updates').updateOne(
+                    { _id: update._id },
+                    {
+                        $set: {
+                            'status': 'completed',
+                            'processedAt': now
+                        }
+                    }
+                );
+            }
+
+            await mongoClient.close();
+        } catch (error) {
+            console.error('Error processing scheduled updates:', error);
         }
-
-        // Commit all updates
-        await batch.commit();
         
         return null;
     }); 

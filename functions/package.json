@@ -17,7 +17,8 @@
     "firebase-admin": "^12.2.0",
     "firebase-functions": "^5.0.1",
     "geofire-common": "^6.0.0",
-    "geofirestore": "^5.2.0"
+    "geofirestore": "^5.2.0",
+    "mongodb": "^6.3.0"
   },
   "devDependencies": {
     "firebase-functions-test": "^3.1.0"

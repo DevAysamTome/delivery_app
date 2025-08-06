@@ -1,4 +1,5 @@
 const geofire = require('geofire-common');
+const { MongoClient, ObjectId } = require('mongodb');
 
 module.exports.findNearestDeliveryWorker = (functions, admin) =>
   functions.pubsub
@@ -19,35 +20,65 @@ module.exports.findNearestDeliveryWorker = (functions, admin) =>
       if (!orderId) return console.error('Missing orderId in payload');
 
       try {
-        const orderSnapshot = await admin.firestore().collection('orders').doc(orderId).get();
-        if (!orderSnapshot.exists) return console.error('Order not found:', orderId);
+        // Connect to MongoDB
+        const mongoClient = new MongoClient(process.env.MONGODB_URI);
+        await mongoClient.connect();
+        const db = mongoClient.db();
 
-        const orderData = orderSnapshot.data();
-        const customerLocation = orderData.customer?.location;
-        if (!customerLocation || typeof customerLocation.latitude !== 'number' || typeof customerLocation.longitude !== 'number') {
-          return console.error('Invalid customer location');
+        // Build query conditions
+        const queryConditions = [
+          { orderId: parseInt(orderId) },
+          { orderId: orderId }
+        ];
+
+        // Only add ObjectId condition if it's a valid ObjectId format
+        if (ObjectId.isValid(orderId)) {
+          queryConditions.push({ _id: new ObjectId(orderId) });
         }
 
-        const workersSnapshot = await admin.firestore()
-          .collection('deliveryWorkers')
-          .where('status', '==', 'متاح')
-          .get();
+        // Get order from MongoDB
+        const order = await db.collection('orders').findOne({ 
+          $or: queryConditions
+        });
+        
+        if (!order) {
+          console.error('Order not found:', orderId);
+          await mongoClient.close();
+          return;
+        }
 
-        const deliveryWorkers = workersSnapshot.docs.map(doc => {
-          const data = doc.data();
-          if (typeof data.latitude === 'number' && typeof data.longitude === 'number') {
-            const distance = geofire.distanceBetween(
-              [customerLocation.latitude, customerLocation.longitude],
-              [data.latitude, data.longitude]
-            );
-            return { id: doc.id, ...data, distance };
-          }
-          return null;
-        }).filter(Boolean);
+        const customerLocation = order.customer?.location;
+        if (!customerLocation || typeof customerLocation.latitude !== 'number' || typeof customerLocation.longitude !== 'number') {
+          console.error('Invalid customer location');
+          await mongoClient.close();
+          return;
+        }
 
-        if (!deliveryWorkers.length) return console.log('No valid delivery workers');
+        // Get available delivery workers from MongoDB
+        const deliveryWorkers = await db.collection('deliveryworkers')
+          .find({ status: 'متاح' })
+          .toArray();
 
-        const nearestWorker = deliveryWorkers.reduce((a, b) => a.distance < b.distance ? a : b);
+        const workersWithDistance = deliveryWorkers
+          .map(worker => {
+            if (typeof worker.latitude === 'number' && typeof worker.longitude === 'number') {
+              const distance = geofire.distanceBetween(
+                [customerLocation.latitude, customerLocation.longitude],
+                [worker.latitude, worker.longitude]
+              );
+              return { ...worker, distance };
+            }
+            return null;
+          })
+          .filter(Boolean);
+
+        if (!workersWithDistance.length) {
+          console.log('No valid delivery workers');
+          await mongoClient.close();
+          return;
+        }
+
+        const nearestWorker = workersWithDistance.reduce((a, b) => a.distance < b.distance ? a : b);
 
         if (nearestWorker?.fcmToken) {
           await admin.messaging().sendToDevice(nearestWorker.fcmToken, {
@@ -56,10 +87,12 @@ module.exports.findNearestDeliveryWorker = (functions, admin) =>
               body: 'لديك طلب جديد بالقرب منك!',
             },
           });
-          console.log('Notification sent to:', nearestWorker.id);
+          console.log('Notification sent to:', nearestWorker._id);
         } else {
           console.log('No FCM token for nearest worker');
         }
+
+        await mongoClient.close();
 
       } catch (error) {
         console.error('Delivery assignment error:', error);

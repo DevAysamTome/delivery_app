@@ -321,7 +321,7 @@ class _HomeContentState extends State<HomeContent> {
                             final deliveryWorkerId = await _getCurrentDeliveryWorkerId();
                             if (deliveryWorkerId != null) {
                               await _orderController.acceptOrder(
-                                  mainOrder['orderId'].toString() , deliveryWorkerId);
+                                  mainOrder['orderId'].toString() );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text(AppStrings.deliveryWorkerNotFound)),
